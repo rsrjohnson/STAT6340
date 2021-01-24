@@ -1,28 +1,100 @@
 ---
-title: "HW0"
-output: pdf_document
+title: "ISLR Lab 2"
+author: "Suarez Rodes, Randy"
+output:
+  pdf_document: 
+    keep_tex: no
+  html_document:
+    df_print: paged
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+## Basic Commands
+Vector creatinon c() "concatenate" function. Use <- or = to declare variables or functions.
+```{r  message=FALSE, warning=FALSE}
+x <- c(1,3,2,5)
+x
+x = c(1,6,2)
+x
+y = c(1,4,3)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Adding vectors pointwise.
+```{r  message=FALSE, warning=FALSE}
+length(x)
+length(y)
+x+y
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+ls() and rm() (List of objects and remove)
+```{r  message=FALSE, warning=FALSE}
+ls()
+rm(x,y)
+ls()
+```
+
+Removing all at once
+```{r  message=FALSE, warning=FALSE}
+rm(list=ls())
+```
+
+The matrix function ?matrix to learn more about it (? it is used to get documentation help)
+For matrix specify data, number of rows and cols.
+```{r  message=FALSE, warning=FALSE}
+x=matrix (data=c(1,2,3,4) , nrow=2, ncol =2)
+x
+```
+
+We can specify the order of the entries using byrow, by default byrow=FALSE, hence the entries are created by column as the default setting.
+```{r  message=FALSE, warning=FALSE}
+x=matrix (data=c(1,2,3,4) , nrow=2, ncol =2,byrow = TRUE)
+x
+```
+
+Functions work in a vectorized fashion (entry wise)
+
+```{r  message=FALSE, warning=FALSE}
+sqrt(x) #square root
+x^2 #power
+```
+
+
+Random Data generation Ex:rnorm() Normal random variates. Random generation changes each call (use set.seed() to fix a random generator seed)
+cor() correlation
+```{r  message=FALSE, warning=FALSE}
+x=rnorm (50)
+y=x+rnorm (50, mean=50, sd=.1)
+cor(x,y)
+
+set.seed (1303)
+rnorm (50)
+
+```
+mean() and var() of a vector, apply sqrt() to the output of var() to obtain standard deviation or simply use sd()
+```{r message=FALSE, warning=FALSE}
+set.seed(3)
+y=rnorm (100)
+mean(y)
+var(y)
+sqrt(var(y))
+sd(y)
+```
+
+## Graphics
+
+plot() function. Example plot(x,y) produces a scatterplot of the numbers in x versus the numbers
+in y.
+
+```{r message=FALSE, warning=FALSE}
+x=rnorm (100)
+y=rnorm (100)
+plot(x,y)
+plot(x,y,xlab=" this is the x-axis",ylab=" this is the y-axis", main=" Plot of X vs Y")
+```
+
+Use pdf() or jpeg() to 
