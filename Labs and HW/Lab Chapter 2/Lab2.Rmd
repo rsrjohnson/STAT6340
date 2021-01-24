@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Basic Commands
-Vector creatinon c() "concatenate" function. Use <- or = to declare variables or functions.
+Vector creation c() "concatenate" function. Use <- or = to declare variables or functions.
 ```{r  message=FALSE, warning=FALSE}
 x <- c(1,3,2,5)
 x
@@ -97,4 +97,140 @@ plot(x,y)
 plot(x,y,xlab=" this is the x-axis",ylab=" this is the y-axis", main=" Plot of X vs Y")
 ```
 
-Use pdf() or jpeg() to 
+To create a pdf, we use the pdf() function, and to create a jpeg, pdf() we use the jpeg() function
+
+pdf (" Figure .pdf ")
+plot(x,y,col =" green ")
+dev.off ()
+null device
+
+The function dev.off() indicates to R that we are done creating the plot.
+
+The function seq() can be used to create a sequence of numbers. For instance, seq(a,b) makes a vector of integers between a and b. There are many other options: for instance, seq(0,1,length=10) makes a sequence of 10 numbers that are equally spaced between 0 and 1. Typing 3:11 is a shorthand for seq(3,11) for integer arguments.
+
+```{r message, warning=FALSE}
+x=seq (1 ,10)
+x
+x=1:10
+x
+x=seq(-pi ,pi ,length =50)
+```
+
+Function  contour() produces a contour plot in order to represent three-dimensional data.
+it is like a topographical map. It takes three arguments:
+
+1. A vector of the x values (the first dimension),
+2. A vector of the y values (the second dimension), and
+3. A matrix whose elements correspond to the z value (the third dimension) for each pair of (x,y) coordinates.
+
+```{r message, warning=FALSE}
+y=x
+f=outer(x,y,function (x,y)cos(y)/(1+x^2)) #outer product
+contour (x,y,f)
+contour (x,y,f,nlevels =45, add=T)
+fa=(f-t(f))/2 #t() for transpose
+contour (x,y,fa,nlevels =15)
+```
+
+
+The image() function works the same way as contour(), except that it image() produces a color-coded plot whose colors depend on the z value. This is known as a heatmap, and is sometimes used to plot temperature in weather
+forecasts. Alternatively, persp() can be used to produce a three-dimensional persp() plot. The arguments theta and phi control the angles at which the plot is viewed.
+
+```{r message, warning=FALSE}
+image(x,y,fa)
+persp(x,y,fa)
+persp(x,y,fa ,theta =30)
+persp(x,y,fa ,theta =30, phi =20)
+persp(x,y,fa ,theta =30, phi =70)
+persp(x,y,fa ,theta =30, phi =40)
+```
+
+## Indexing Data
+```{r}
+A=matrix (1:16 ,4 ,4)
+A
+```
+Indexing and Slicing
+
+```{r}
+A[2,3] #2nd row 3rd column element, remember R indexes start at 1.
+A[c(1,3) ,c(2,4) ] #Submatrix of rows 1 and 3 columns 2 and 4
+A[1:3 ,2:4] #Submatrix from row 1 through 3 and columns from 2 through 4
+A[1:2,] #Rows 1 through 2 and all columns
+A[,1:2] #All rows and columns 1 through 2
+A[1,] #Single row or column is treated as a vector object
+A[-c(1,3),]#- for indexes indicates complement, here all rows but row 1 and 3
+dim(A) #number of rows by columns
+```
+
+## Loading Data
+
+To import data we can use read.table() (data frame), and to export we can use write.table()
+```{r}
+Auto=read.table("Auto.data") #loading the Auto data from the current directory, no necessary if we load it from the libray ISLR
+fix(Auto) #use to visualize the data but must be closed to continue working with R
+```
+
+
+This particular data set has not been loaded correctly, because R has assumed that the variable names are part of the data and so has included them in the first row. The data set also includes a number of missing observations, indicated by a question mark ?. Missing values are a common occurrence in real data sets. Using the option header=T (or header=TRUE) in the read.table() function tells R that the first line of the file contains the variable names, and using the option na.strings tells R that any time it sees a particular character or set of characters (such as a question mark), it should be treated as a missing element of the data matrix.
+
+```{r}
+Auto=read.table ("Auto.data", header =T,na.strings ="?")
+fix(Auto)
+```
+
+
+Comma Separated Values
+```{r}
+Auto=read.csv ("Auto.csv", header =T,na.strings ="?")
+fix(Auto)
+dim(Auto)
+Auto [1:4,]
+Auto=na.omit(Auto) #automatically omit rows with missing values
+dim(Auto)
+names(Auto) #using names to check for the variable names
+```
+
+## Additional Graphical and Numerical Summaries
+
+```{r}
+plot(Auto$cylinders , Auto$mpg ) #We use $ to access the variables of a data frame
+attach (Auto) #We can also use attach to make the variables in this data frame available by name
+plot(cylinders , mpg)
+
+#We can change a cylinders to a qualitative variable using as.factor
+cylinders =as.factor (cylinders)
+plot(cylinders , mpg) #since cylinders is a categorical variable now, then we obtain a boxplot
+plot(cylinders , mpg , col ="red ")
+plot(cylinders , mpg , col ="red", varwidth =T)
+plot(cylinders , mpg , col ="red", varwidth =T,horizontal =T)
+plot(cylinders , mpg , col ="red", varwidth =T, xlab=" cylinders ",ylab ="MPG ")
+```
+
+The hist() function can be used to plot a histogram. Note that col=2 has the same effect as col="red".
+
+```{r}
+hist(mpg)
+hist(mpg ,col =2)
+hist(mpg ,col =2, breaks =15)
+```
+
+The pairs() function creates a scatterplot matrix i.e. a scatterplot for every pair of variables for any given data set. We can also produce scatterplots for just a subset of the variables.
+```{r}
+#pairs(Auto) #Auto has the variable name as character, so this causes an error for pairs
+pairs(~ mpg + displacement + horsepower + weight + acceleration , Auto)
+```
+
+In conjunction with the plot() function, identify() provides a useful identify() interactive method for identifying the value for a particular variable for points on a plot. We pass in three arguments to identify(): the x-axis variable, the y-axis variable, and the variable whose values we would like to see printed for each point. Then clicking on a given point in the plot will cause R to print the value of the variable of interest. Right-clicking on the plot will exit the identify() function (control-click on a Mac). The numbers printed under the identify() function correspond to the rows for the selected points.
+
+```{r}
+plot(horsepower ,mpg)
+identify (horsepower ,mpg ,name)
+```
+
+The summary() function produces a numerical summary of each variable in summary() a particular data set. For qualitative variables such as name, R will list the number of observations that fall in each category. We can also produce a summary of just a single variable.
+```{r}
+summary(Auto)
+summary(mpg)
+```
+Once we have finished using R, we type q() in order to shut it down, or quit. When exiting R, we have the option to save the current workspace so that all objects (such as data sets) that we have created in this R session will be available next time. Before exiting R, we may want to save a record of all of the commands that we typed in the most recent session; this can be accomplished using the savehistory() function. Next time we enter R, we can load that history using the loadhistory() function.
