@@ -1,3 +1,5 @@
+library(rstudioapi)    
+setwd(dirname(getActiveDocumentContext()$path))
 #Packages, data, functions and Global Variables
 
 library(ggplot2) #Used for graphics an visual representations
@@ -5,7 +7,7 @@ library(class) #Used for knn models
 
 training_error_rate=function(ypred,ytrue,n)
 {
-  sum(ypred==ytrue)/n
+  sum(ypred!=ytrue)/n
 }
 
 
@@ -48,7 +50,6 @@ for(i in 1:topK)
 }
 
 #Question 1.b
-
-g1=ggplot(Error_df, aes(x=k_rate)) + 
-  geom_line(aes(y = trn_Error), color = "darkred") + 
-  geom_line(aes(y = tst_Error), color="steelblue", linetype="twodash") 
+g1=ggplot(data=Error_df, aes(x=k_rate,y=trn_Error))
+g1 +   geom_line(aes(y = trn_Error), color = "blue")+
+   geom_line(aes(y = tst_Error), color="orange")
