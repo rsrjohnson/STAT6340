@@ -108,7 +108,7 @@ The function dev.off() indicates to R that we are done creating the plot.
 
 The function seq() can be used to create a sequence of numbers. For instance, seq(a,b) makes a vector of integers between a and b. There are many other options: for instance, seq(0,1,length=10) makes a sequence of 10 numbers that are equally spaced between 0 and 1. Typing 3:11 is a shorthand for seq(3,11) for integer arguments.
 
-```{r message, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 x=seq (1 ,10)
 x
 x=1:10
@@ -123,7 +123,7 @@ it is like a topographical map. It takes three arguments:
 2. A vector of the y values (the second dimension), and
 3. A matrix whose elements correspond to the z value (the third dimension) for each pair of (x,y) coordinates.
 
-```{r message, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 y=x
 f=outer(x,y,function (x,y)cos(y)/(1+x^2)) #outer product
 contour (x,y,f)
@@ -136,7 +136,7 @@ contour (x,y,fa,nlevels =15)
 The image() function works the same way as contour(), except that it image() produces a color-coded plot whose colors depend on the z value. This is known as a heatmap, and is sometimes used to plot temperature in weather
 forecasts. Alternatively, persp() can be used to produce a three-dimensional persp() plot. The arguments theta and phi control the angles at which the plot is viewed.
 
-```{r message, warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 image(x,y,fa)
 persp(x,y,fa)
 persp(x,y,fa ,theta =30)
