@@ -2,6 +2,7 @@ library(rstudioapi)
 setwd(dirname(getActiveDocumentContext()$path))
 #Packages, data, functions and Global Variables
 
+library(tidyverse)
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
 
@@ -17,6 +18,8 @@ classification_error_rate=function(ypred,ytrue)
 #Top value of k for our experiment
 topK=200
 
+
+
 #Reading training and testing data set
 trn=read.csv("1-training_data.csv")
 tst=read.csv("1-test_data.csv")
@@ -26,8 +29,8 @@ n_trn=nrow(trn)
 n_tst=nrow(tst)
 
 #Converting the classes to factors
-trn_y=trn$y
-tst_y=tst$y
+trn_y=as.factor(trn$y)
+tst_y=as.factor(tst$y)
 
 #Dropping the classes to use the training and data sets on the knn function.
 trn$y=NULL
@@ -39,6 +42,7 @@ Error_df=data.frame(k=seq(1,topK),k_rate=1/seq(1,topK),trn_Error=rep(0,topK),tst
 ##########################
 
 
+#Part1
 
 #Question 1.a
 for(i in 1:topK)
@@ -51,6 +55,7 @@ for(i in 1:topK)
   Error_df$tst_Error[i]=classification_error_rate(tst_pred,tst_y)
   
 }
+
 
 #Question 1.b
 g1=ggplot(data=Error_df, aes(x=k_rate,y=trn_Error))
@@ -79,10 +84,39 @@ bestK=knn(trn,trn,cl=trn_y,k=optimalK,prob = T )
 prob <- attr(bestK, "prob")
 prob = ifelse(prob=="1", prob, 1-prob)
 x1 <- 1:10
-x2 <- 1:100
+x2 <- 1:50
 prob_matrix = matrix(prob, length(x1), length(x2))
 contour(x1,x2,prob_matrix,levels=0.5, labels="", xlab="", ylab="", main=
           "Some Picture", lwd=2, axes=FALSE)
 gd <- expand.grid(x=x1, y=x2)
 points(gd, pch="o", cex=1.2, col=ifelse(prob==1, "blue", "orange"))
 box()
+
+
+
+
+#Part 2
+
+# library(keras)
+# cifar <- dataset_cifar10()
+# str(cifar)
+# x.train <- cifar$train$x
+# y.train <- cifar$train$y
+# x.test <- cifar$test$x
+# y.test <- cifar$test$y
+# # reshape the images as vectors (column-wise)
+# # (aka flatten or convert into wide format)
+# # (for row-wise reshaping, see ?array_reshape)
+# dim(x.train) <- c(nrow(x.train), 32*32*3) # 50000 x 3072
+# dim(x.test) <- c(nrow(x.test), 32*32*3) # 50000 x 3072
+# # rescale the x to lie between 0 and 1
+# x.train <- x.train/255
+# x.test <- x.test/255
+# # categorize the response
+# y.train <- as.factor(y.train)
+# y.test <- as.factor(y.test)
+# # randomly sample 1/100 of test data to reduce computing time
+# set.seed(2021)
+# id.test <- sample(1:10000, 100)
+# x.test <- x.test[id.test,]
+# y.test <- y.test[id.test]
