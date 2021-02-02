@@ -2,12 +2,13 @@ library(rstudioapi)
 setwd(dirname(getActiveDocumentContext()$path))
 #Packages, data, functions and Global Variables
 
-library(tidyverse)
+#library(tidyverse)
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
 library(caret) #Used for confusion matrix
+#library(ModelMetrics)
 
-set.seed(2021) #Fixing a seed to replicate results in case of a tie on KNN
+set.seed(8467) #Fixing a seed to replicate results in case of a tie on KNN
 
 classification_error_rate=function(ypred,ytrue)
 {
@@ -23,7 +24,6 @@ graph_legend=c("Training Set","Testing Set")
 
 #Experiment 1
 
-
 #Value of k for experiment 1
 topK=200
 kvals=seq(1,topK,5)
@@ -33,7 +33,7 @@ kvals=seq(1,topK,5)
 trn=read.csv("1-training_data.csv", stringsAsFactors = TRUE)
 tst=read.csv("1-test_data.csv", stringsAsFactors = TRUE)
 
-#Saving
+#Saving training and testing labels
 trn_y=trn$y
 tst_y=tst$y
 
@@ -44,14 +44,14 @@ tst$y=NULL
 #Dataframe to track the errors
 Error_df=data.frame(k=kvals,k_rate=1/kvals,trn_Error=kvals,tst_Error=kvals)
 
-
 #Question 1.a
 for(i in 1:length(kvals))
 {
+  #Fitting KNN for training data
   trn_pred=knn(trn,trn,cl=trn_y,k=kvals[i])
   Error_df$trn_Error[i]=classification_error_rate(trn_pred,trn_y)
   
-  
+  #Fitting KNN for testing data
   tst_pred=knn(trn,tst,cl=trn_y,k=kvals[i])
   Error_df$tst_Error[i]=classification_error_rate(tst_pred,tst_y)
   
@@ -120,7 +120,10 @@ id.test <- sample(1:10000, 100)
 x.test <- x.test[id.test,]
 y.test <- y.test[id.test]
 
-
+# x.train=read.csv("cifar_x_train.csv")
+# x.test=read.csv("cifar_x_test.csv")
+# y.train=factor(read.csv("cifar_y_train.csv"),levels=c(0,1,2,3,4,5,6,7,8,9))
+# y.test=factor(read.csv("cifar_y_test.csv"),levels=c(0,1,2,3,4,5,6,7,8,9))
 
 kvals2=c(50, 100, 200, 300, 400)
 
@@ -136,7 +139,7 @@ for(i in 1:length(kvals2))
 }
 
 ind_optimalK=which.min(Cifar_Error$tst_Error)
-cifar_pred=knn(x.train,x.test,cl=y.train,k=ind_optimalK)
+cifar_pred=knn(x.train,x.test,cl=y.train,k=ind_optimalK,prob=TRUE)
 
 confusionMatrix(table(cifar_pred ,y.test))
 

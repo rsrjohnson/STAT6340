@@ -1,0 +1,134 @@
+---
+title: "STAT 6340 Mini Project 1 Report"
+author: "Randy Suarez Rodes"
+date: "1/31/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1 Answers 
+
+## Experiment 1
+
+### Question 1.a
+
+## Experiment 2
+
+
+# Section 2 Code
+
+
+```{r , echo=FALSE}
+library(ggplot2) #Used for graphics an visual representations
+library(class) #Used for KNN models
+library(caret) #Used for confusion matrix
+
+classification_error_rate=function(ypred,ytrue)
+{
+  mean(ypred!=ytrue)
+}
+
+set.seed(8467) #Fixing a seed to replicate results in case of a tie on KNN
+
+graph_colors=c("blue","orange")
+graph_legend=c("Training Set","Testing Set")
+```
+
+
+Experiment 1
+```{r, echo=FALSE}
+#Experiment 1
+
+#Value of k for experiment 1
+topK=200
+kvals=seq(1,topK,5)
+
+
+#Reading training and testing data set
+trn=read.csv("1-training_data.csv", stringsAsFactors = TRUE)
+tst=read.csv("1-test_data.csv", stringsAsFactors = TRUE)
+
+#Saving training and testing labels
+trn_y=trn$y
+tst_y=tst$y
+
+#Dropping the classes to use the training and data sets on the knn function.
+trn$y=NULL
+tst$y=NULL
+
+#Dataframe to track the errors
+Error_df=data.frame(k=kvals,k_rate=1/kvals,trn_Error=kvals,tst_Error=kvals)
+
+#Question 1.a
+for(i in 1:length(kvals))
+{
+  #Fitting KNN for training data
+  trn_pred=knn(trn,trn,cl=trn_y,k=kvals[i])
+  Error_df$trn_Error[i]=classification_error_rate(trn_pred,trn_y)
+  
+  #Fitting KNN for testing data
+  tst_pred=knn(trn,tst,cl=trn_y,k=kvals[i])
+  Error_df$tst_Error[i]=classification_error_rate(tst_pred,tst_y)
+  
+}
+
+
+#Question 1.b
+
+g=ggplot(data=Error_df, aes(x=k,y=trn_Error))
+
+g+geom_line(aes(y=trn_Error,color=graph_legend[1]),size=1.1)+geom_point(color="blue",shape=19)+
+  geom_line(aes(y=tst_Error,color=graph_legend[2]),size=1.1)+geom_point(x=Error_df$k,y=Error_df$tst_Error,color="orange",shape=15)+
+  scale_color_manual("Legend",values = c("Training Set"="blue","Testing Set"="orange"))+
+  labs(title="Classification Error Rate",x="K",y="Error")+
+  theme(plot.title=element_text(hjust=0.5))
+
+
+#Question 1.c
+
+ind_optimalK=which.min(Error_df$tst_Error)
+
+Error_df[ind_optimalK,]
+optimalK=Error_df$k[ind_optimalK]
+
+#Question 1.d
+
+x1=seq(min(trn[,1]),max(trn[,1]),length.out=100)
+x2=seq(min(trn[,1]),max(trn[,1]),length.out=100)
+grid <- expand.grid(x=x1, y=x2)
+
+bestK=knn(trn,grid,cl=trn_y,k=optimalK,prob = TRUE )
+prob <- attr(bestK, "prob")
+prob = ifelse(bestK=="yes", prob, 1-prob)
+prob_matrix = matrix(prob, length(x1), length(x2))
+
+#plot(trn, pch="o", cex=1.2, col=ifelse(bestK=="yes", "blue", "orange"))
+plot(trn, col=ifelse(trn_y=="yes", "blue", "orange"),main=paste("Desicion boundary for Training data K=",optimalK))
+contour(x1,x2,prob_matrix,levels=0.5, labels="", xlab="", ylab="", lwd=2, add = TRUE)
+
+
+contour_df=data.frame(x1=x1,x2=x2,prob_matrix=prob_matrix)
+
+trn$col=factor(ifelse(trn_y=="yes",graph_colors[1], graph_colors[2]))
+
+g3=ggplot(trn,aes(x=x.1,y=x.2,color=col))+geom_point()+geom_contour()
+
+```
+
+
+```{r, include=FALSE}
+k.opt <- 70
+set.seed(1)
+mod.opt <- knn(train.X, grid, train.Y, k = k.opt, prob = T)
+prob <- attr(mod.opt, "prob") # prob is voting fraction for winning class
+prob <- ifelse(mod.opt == "Up", prob, 1 - prob) # now it is voting fraction for Direction == "Up"
+prob <- matrix(prob, n.grid, n.grid)
+```
+
+```{r, echo=FALSE}
+plot(train.X, col = ifelse(train.Y == "Up", "green", "red"))
+contour(x1.grid, x2.grid, prob, levels = 0.5, labels = "", xlab = "", ylab = "", main = "", add = T)
+```
