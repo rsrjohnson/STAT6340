@@ -18,8 +18,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r , echo=FALSE,message=FALSE, warning=FALSE}
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
-library(caret) #Used for confusion matrix
 
+#Helper function to calculate the classification error rate
 classification_error_rate=function(ypred,ytrue)
 {
   mean(ypred!=ytrue)
@@ -27,27 +27,10 @@ classification_error_rate=function(ypred,ytrue)
 
 set.seed(8467) #Fixing a seed to replicate results in case of a tie on KNN
 
+#Setting graphic options.
 graph_colors=c("blue","orange")
 graph_legend=c("Training Set","Testing Set")
 ```
-
-
-
-
-<!--  ```{r, include=FALSE} -->
-<!--  k.opt <- 70 -->
-<!--  set.seed(1) -->
-<!--  mod.opt <- knn(train.X, grid, train.Y, k = k.opt, prob = T) -->
-<!--  prob <- attr(mod.opt, "prob") # prob is voting fraction for winning class -->
-<!--  prob <- ifelse(mod.opt == "Up", prob, 1 - prob) # now it is voting fraction for Direction == "Up" -->
-<!--  prob <- matrix(prob, n.grid, n.grid) -->
-<!--  ``` -->
-<!--  -->
-<!--  ```{r, echo=FALSE} -->
-<!--  plot(train.X, col = ifelse(train.Y == "Up", "green", "red")) -->
-<!--  contour(x1.grid, x2.grid, prob, levels = 0.5, labels = "", xlab = "", ylab = "", main = "", add = T) -->
-<!--  ``` -->
-
 ### Question 1.a
 
 ```{r, echo=FALSE,message=FALSE, warning=FALSE}
@@ -55,18 +38,23 @@ graph_legend=c("Training Set","Testing Set")
 
 #Value of k for experiment 1
 topK=200
-kvals=seq(1,topK,5)
-
+#kvals=c(seq(1,200,5),seq(200,400,50))
+kvals=seq(1,200,5)
 
 #Reading training and testing data set
 trn=read.csv("1-training_data.csv", stringsAsFactors = TRUE)
 tst=read.csv("1-test_data.csv", stringsAsFactors = TRUE)
 
+#Exploring the data set
+
+str(trn)
+summary(trn)
+
 #Saving training and testing labels
 trn_y=trn$y
 tst_y=tst$y
 
-#Dropping the classes to use the training and data sets on the knn function.
+#Dropping the classes to use only the predictors on the knn function.
 trn$y=NULL
 tst$y=NULL
 
@@ -85,9 +73,21 @@ for(i in 1:length(kvals))
   Error_df$tst_Error[i]=classification_error_rate(tst_pred,tst_y)
   
 }
+
+
+train_error <- sapply(s, function(i){
+  yhat <- knn(xtrain, xtrain, ytrain, i)
+  return(1-mean(as.numeric(as.vector(yhat))==ytrain))
+})
+
+test_error <- sapply(s, function(i){
+  yhat <- knn(xtrain, xtest, ytrain, i)
+  return(1-mean(as.numeric(as.vector(yhat))==ytest))
+})
+
 ```
 
-We have fit KNN for both training and testing set for 40 values of k ranging between 1, 5, ...,196.(See Code section).
+We have fitted KNN for both training and testing set for values of k ranging between 1, 5, ...,196 and additional values of 200,  250,...400.
 
 ### Question 1.b
 
@@ -104,20 +104,13 @@ g=ggplot(data=Error_df, aes(x=k,y=trn_Error))+
   theme(plot.title=element_text(hjust=0.5))
 print(g)
 
-
-# g1=ggplot(data=Error_df, aes(x=k_rate,y=trn_Error))+
-#   geom_line(aes(y=trn_Error,color=graph_legend[1]),size=1.1)+
-#   geom_point(color="blue",shape=19)+
-#   geom_line(aes(y=tst_Error,color=graph_legend[2]),size=1.1)+
-#   geom_point(x=Error_df$k,y=Error_df$tst_Error,color="orange",shape=15)+
-#   scale_color_manual("Legend",values = c("Training Set"="blue","Testing Set"="orange"))+
-#   labs(title="Classification Error Rate",x="1/K",y="Error")+
-#   theme(plot.title=element_text(hjust=0.5))
-# print(g1)
-
 ```
+We present the training and testing error rates against the number of nearest neighbors on graph 1. We can appreciate that for small values of k we have a low error rate on the training set in contrast we obtained high error rates for the testing set. As the value of K increases we can appreciate how the error of the training set increases while the testing set start to decrease. Both training and testing sets stabilizes and then the testing set increases again. This is consistent with class discussion since the K-NN algorithm flexibility decreases as the value of K increases, leading to an increase in bias. For small values of K this algorithm tends to overfit due to high variance while for greater values of k the variance
 
-### Question 1.c
+As K increases, flexibility decreases, implying that bias
+increases and variance decreases
+
+### Question 1.cg3
 ```{r,include=FALSE,message=FALSE, warning=FALSE}
 #Question 1.c
 
@@ -126,7 +119,7 @@ Error_df[ind_optimalK,]
 optimalK=Error_df$k[ind_optimalK]
 
 ```
-
+The optimal K for our experiment is 116, dealing a training error rate of 0.1181 and a testing error rate of 0.1160.
 
 ### Question 1.d
 
@@ -138,26 +131,81 @@ x1=seq(min(trn[,1]),max(trn[,1]),length.out=100)
 x2=seq(min(trn[,1]),max(trn[,1]),length.out=100)
 grid <- expand.grid(x=x1, y=x2)
 
+#Classifying the grid
 bestK=knn(trn,grid,cl=trn_y,k=optimalK,prob = TRUE )
 prob <- attr(bestK, "prob")
 prob = ifelse(bestK=="yes", prob, 1-prob)
 prob_matrix = matrix(prob, length(x1), length(x2))
 
-#plot(trn, pch="o", cex=1.2, col=ifelse(bestK=="yes", "blue", "orange"))
-plot(trn, col=ifelse(trn_y=="yes", "blue", "orange"),main=paste("Desicion boundary for Training data K=",optimalK))
+
+plot(trn, col=ifelse(trn_y=="yes", "blue", "orange"),
+     main=paste("Desicion boundary for Training data K=",optimalK))
 contour(x1,x2,prob_matrix,levels=0.5, labels="", xlab="", ylab="", lwd=2, add = TRUE)
 
 
-contour_df=data.frame(x1=x1,x2=x2,prob_matrix=prob_matrix)
-
 trn$col=factor(ifelse(trn_y=="yes",graph_colors[1], graph_colors[2]))
 
-g3=ggplot(trn,aes(x=x.1,y=x.2,color=col))+geom_point()+geom_contour()
+g3=ggplot(trn,aes(x=x.1,y=x.2,color=col))+geom_point()+geom_contour(data=grid, aes(x=x, y=y, z=V3), breaks=0.5, col="grey30") 
 ```
+We present the training data set along with the decision boundary obtained from the optimal value K(116) on image 2. We appreciate how the decision boundary for a majority of the observations correctly separates the training set into two clear classes. There is misclassification close to the decision as expected, although the decision boundary tends to predict the correct class, therefore it is not as much sensible to new data.
+
+
+without too much overfitting in the sense that the red dots that are “out of place” are reasonably classified as green but the boundary manages to correctly classify the set of green dots that are misclassified in the smoother boundary determined at k=50.
 
 ## Experiment 2
 
+```{r,include=FALSE,message=FALSE, warning=FALSE}
+#Experiment 2
+
+##Preprocessing
+library(keras)
+cifar <- dataset_cifar10()
+str(cifar)
+
+x.train <- cifar$train$x
+y.train <- cifar$train$y
+x.test <- cifar$test$x
+y.test <- cifar$test$y
+
+# reshape the images as vectors (column-wise)
+# (aka flatten or convert into wide format)
+# (for row-wise reshaping, see ?array_reshape)
+dim(x.train) <- c(nrow(x.train), 32*32*3) # 50000 x 3072
+dim(x.test) <- c(nrow(x.test), 32*32*3) # 50000 x 3072
+
+# rescale the x to lie between 0 and 1
+x.train <- x.train/255
+x.test <- x.test/255
+
+# categorize the response
+y.train <- as.factor(y.train)
+y.test <- as.factor(y.test)
+
+# randomly sample 1/100 of test data to reduce computing time
+
+set.seed(2021)
+id.test <- sample(1:10000, 100)
+
+x.test <- x.test[id.test,]
+y.test <- y.test[id.test]
+```
+
 ### Question 2.a
+
+```{r,include=FALSE,message=FALSE, warning=FALSE}
+#Question 2.a
+
+kvals2=c(50, 100, 200, 300, 400)
+
+Cifar_Error=data.frame(k=kvals2,tst_Error=kvals2)
+
+for(i in 1:length(kvals2))
+{
+  tst_pred=knn(x.train,x.test,cl=y.train,k=kvals2[i])
+  Cifar_Error$tst_Error[i]=classification_error_rate(tst_pred,y.test)
+  
+}
+```
 
 ### Question 2.b
 
@@ -166,11 +214,11 @@ g3=ggplot(trn,aes(x=x.1,y=x.2,color=col))+geom_point()+geom_contour()
 \newpage
 # 2 Code
 
-```{r,eval=FALSE, message=FALSE, warning=FALSE}
+```{r,eval=FALSE, echo=FALSE,message=FALSE, warning=FALSE}
 
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
-library(caret) #Used for confusion matrix
+
 
 classification_error_rate=function(ypred,ytrue)
 {
@@ -229,18 +277,6 @@ g=ggplot(data=Error_df, aes(x=k,y=trn_Error))+
   labs(title="Classification Error Rate",x="K",y="Error")+
   theme(plot.title=element_text(hjust=0.5))
 print(g)
-
-
-g1=ggplot(data=Error_df, aes(x=k_rate,y=trn_Error))+
-  geom_line(aes(y=trn_Error,color=graph_legend[1]),size=1.1)+
-  geom_point(color="blue",shape=19)+
-  geom_line(aes(y=tst_Error,color=graph_legend[2]),size=1.1)+
-  geom_point(x=Error_df$k,y=Error_df$tst_Error,color="orange",shape=15)+
-  scale_color_manual("Legend",values = c("Training Set"="blue","Testing Set"="orange"))+
-  labs(title="Classification Error Rate",x="1/K",y="Error")+
-  theme(plot.title=element_text(hjust=0.5))
-print(g1)
-
 
 #Question 1.c
 
@@ -266,10 +302,62 @@ plot(trn, col=ifelse(trn_y=="yes", "blue", "orange"),
 contour(x1,x2,prob_matrix,levels=0.5, labels="", xlab="", ylab="", lwd=2, add = TRUE)
 
 
-contour_df=data.frame(x1=x1,x2=x2,prob_matrix=prob_matrix)
+#Experiment 2
 
-trn$col=factor(ifelse(trn_y=="yes",graph_colors[1], graph_colors[2]))
+##Preprocessing
+library(keras)
+cifar <- dataset_cifar10()
+str(cifar)
 
-g3=ggplot(trn,aes(x=x.1,y=x.2,color=col))+geom_point()+geom_contour()
+x.train <- cifar$train$x
+y.train <- cifar$train$y
+x.test <- cifar$test$x
+y.test <- cifar$test$y
+
+# reshape the images as vectors (column-wise)
+# (aka flatten or convert into wide format)
+# (for row-wise reshaping, see ?array_reshape)
+dim(x.train) <- c(nrow(x.train), 32*32*3) # 50000 x 3072
+dim(x.test) <- c(nrow(x.test), 32*32*3) # 50000 x 3072
+
+# rescale the x to lie between 0 and 1
+x.train <- x.train/255
+x.test <- x.test/255
+
+# categorize the response
+y.train <- as.factor(y.train)
+y.test <- as.factor(y.test)
+
+# randomly sample 1/100 of test data to reduce computing time
+
+set.seed(2021)
+id.test <- sample(1:10000, 100)
+
+x.test <- x.test[id.test,]
+y.test <- y.test[id.test]
+
+
+##Experiment 2 questions
+
+kvals2=c(50, 100, 200, 300, 400)
+
+Cifar_Error=data.frame(k=kvals2,k_rate=1/kvals2,tst_Error=kvals2)
+
+#Question 2.a
+
+for(i in 1:length(kvals2))
+{
+  tst_pred=knn(x.train,x.test,cl=y.train,k=kvals2[i])
+  Cifar_Error$tst_Error[i]=classification_error_rate(tst_pred,y.test)
+  
+}
+
+#Question 2.b
+
+ind_optimalK=which.min(Cifar_Error$tst_Error)
+cifar_pred=knn(x.train,x.test,cl=y.train,k=ind_optimalK,prob=TRUE)
+
+table(cifar_pred ,y.test)
+
 
 ```
