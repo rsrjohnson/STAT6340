@@ -1,5 +1,10 @@
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
+library(data.table)
+library(tidyverse)
+
+
+rdseed=8467 #Seed to replicate results in case of a tie on KNN
 
 #Helper function to calculate the classification error rate
 classification_error_rate=function(ypred,ytrue)
@@ -7,7 +12,6 @@ classification_error_rate=function(ypred,ytrue)
   mean(ypred!=ytrue)
 }
 
-set.seed(8467) #Fixing a seed to replicate results in case of a tie on KNN
 
 #Setting graphic options.
 graph_colors=c("blue","orange")
@@ -39,22 +43,88 @@ tst_y=tst$y
 trn$y=NULL
 tst$y=NULL
 
+start_time <- Sys.time()
+
 #Dataframe to track the error rates
-Error_df=data.frame(k=kvals,trn_Error=kvals,tst_Error=kvals)
+Error_df.loop=data.frame(k=kvals,trn_Error=kvals,tst_Error=kvals)
 
 #Question 1.a
 for(i in 1:length(kvals))
 {
   #Fitting KNN for training data
+  set.seed(rdseed)
   trn_pred=knn(trn,trn,cl=trn_y,k=kvals[i])
-  Error_df$trn_Error[i]=classification_error_rate(trn_pred,trn_y)
-  
+  Error_df.loop$trn_Error[i]=classification_error_rate(trn_pred,trn_y)
+
   #Fitting KNN for testing data
+  set.seed(rdseed)
   tst_pred=knn(trn,tst,cl=trn_y,k=kvals[i])
-  Error_df$tst_Error[i]=classification_error_rate(tst_pred,tst_y)
-  
+  Error_df.loop$tst_Error[i]=classification_error_rate(tst_pred,tst_y)
+
 }
 
+end_time <- Sys.time()
+print("for loop")
+print(end_time - start_time)
+
+
+
+fitKNN_Error=function(testing_set,true_labels,i)
+{
+  set.seed(rdseed)
+  classification_error_rate(knn(trn,testing_set,cl=trn_y,k=i),true_labels)
+}
+
+start_time <- Sys.time()
+
+Error.dt=data.table(kval=kvals)
+set.seed(rdseed)
+Error.dt[,trn_Error:=fitKNN_Error(trn,trn_y,kval),by=.(kval)]
+
+set.seed(rdseed)
+Error.dt[,tst_Error:=fitKNN_Error(tst,tst_y,kval),by=.(kval)]
+
+
+end_time <- Sys.time()
+print("data.table")
+print(end_time - start_time)
+
+
+start_time <- Sys.time()
+
+Error_df=data.frame(k=kvals)
+
+Error_df$trn_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  trn_pred = knn(trn,trn,cl=trn_y,k=i)
+
+  (classification_error_rate(trn_pred,trn_y))
+
+})
+
+Error_df$tst_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  tst_pred = knn(trn,tst,cl=trn_y,k=i)
+
+  (classification_error_rate(tst_pred,tst_y))
+
+})
+
+end_time <- Sys.time()
+print("sapply")
+print(end_time - start_time)
+
+start_time <- Sys.time()
+
+Error.tidy=data.frame(kval=kvals)
+
+Error.tidy=Error.tidy%>%group_by(kval)%>%mutate(trn_Error=fitKNN_Error(trn,trn_y,kval))
+
+Error.tidy=Error.tidy%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error(tst,tst_y,kval))
+
+end_time <- Sys.time()
+print("tidy")
+print(end_time - start_time)
 
 #Question 1.b
 
@@ -147,24 +217,38 @@ y.test <- y.test[id.test]
 kvals2=c(50, 100, 200, 300, 400)
 
 #Dataframe to track the test error rates
-Cifar_Error=data.frame(k=kvals2,tst_Error=kvals2)
+#Cifar_Error=data.frame(k=kvals2,tst_Error=kvals2)
 
-for(i in 1:length(kvals2))
-{
-  #Fitting KNN for testing data
-  tst_pred=knn(x.train,x.test,cl=y.train,k=kvals2[i])
-  Cifar_Error$tst_Error[i]=classification_error_rate(tst_pred,y.test)
-  
-}
+# for(i in 1:length(kvals2))
+# {
+#   #Fitting KNN for testing data
+#   set.seed(rdseed)
+#   tst_pred=knn(x.train,x.test,cl=y.train,k=kvals2[i])
+#   Cifar_Error$tst_Error[i]=classification_error_rate(tst_pred,y.test)
+#   
+# }
+
+Cifar_Error=data.frame(k=kvals2)
+
+Cifar_Error$tst_Error = sapply(kvals2, function(i){
+  set.seed(rdseed)
+  tst_pred = knn(x.train,x.test,cl=y.train,k=i)
+
+  (classification_error_rate(tst_pred,y.test))
+
+})
 
 #Question 2.b
 
 #Fitting KNN with the optimal K
+set.seed(rdseed)
 ind_optimalK=which.min(Cifar_Error$tst_Error)
 cifar_pred=knn(x.train,x.test,cl=y.train,k=ind_optimalK,prob=TRUE)
 
 #Displaying confusion matrix
 table(cifar_pred ,y.test,dnn=c("predicted","actual"))
+
+
 
 
 
