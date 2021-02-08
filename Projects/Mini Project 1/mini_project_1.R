@@ -72,15 +72,16 @@ Error_df$tst_Error = sapply(kvals, function(i){
 
 #Generating plot of training and testing error rates against k.
 
-ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
-  geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1,alpha = .8)+
-  geom_point(color=error_colors[1], shape=19,alpha = .8)+
+g=ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
+  geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1)+
+  geom_point(color=error_colors[1], shape=19)+
   geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1,alpha=.6)+
   geom_point(x=Error_df$kval, y=Error_df$tst_Error, color=error_colors[2], shape=15,alpha=.6)+
   scale_color_manual("Legend",values=c("Training Set"=error_colors[1], "Testing Set"=error_colors[2]))+
   labs(title="Classification Error Rate", x="K", y="Error Rate")+
   theme(plot.title=element_text(hjust=0.5))
 
+print(g)
 
 #Question 1.c
 
@@ -111,9 +112,10 @@ df_contour=data.frame(x=grid[,1],y=grid[,2],z=prob)
 df_trn=data.frame(x1=trn[,1],x2=trn[,2],classes=trn_y)
 
 #Plotting the training set and decision boundary
-ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)+
+g2=ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)+
   geom_contour(aes(x=x,y=y,z=z),
                data=df_contour,size=2,colour="black",breaks = 0.5)
+print(g2)
 
 ##########################
 
