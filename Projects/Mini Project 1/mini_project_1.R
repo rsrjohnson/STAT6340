@@ -1,8 +1,6 @@
 #Packages
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
-library(data.table)
-library(dplyr) #Data manipulation
 
 rdseed=8467 #Seed to replicate results in case of a tie on KNN
 
@@ -48,32 +46,33 @@ tst_y=tst$y
 trn$y=NULL
 tst$y=NULL
 
-#Helper function to find KNN predictions and find the classification error rate
-#This function is declared for dplyr manipulation purposes.
-fitKNN_Error=function(testing_set,true_labels,i)
-{
-  set.seed(rdseed)
-  classification_error_rate(knn(trn,testing_set,cl=trn_y,k=i),true_labels)
-}
-
-
 #Dataframe to track the error rates
 Error_df=data.frame(kval=kvals)
 
 #Question 1.a
 
 #Fitting KNN for different values of K (training data)
-Error_df=Error_df%>%group_by(kval)%>%mutate(trn_Error=fitKNN_Error(trn,trn_y,kval))
+Error_df$trn_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  trn_pred = knn(trn,trn,cl=trn_y,k=i)
+  
+  (classification_error_rate(trn_pred,trn_y))
+})
 
 #Fitting KNN for different values of K (testing data)
-Error_df=Error_df%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error(tst,tst_y,kval))
+Error_df$tst_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  tst_pred = knn(trn,tst,cl=trn_y,k=i)
+  
+  (classification_error_rate(tst_pred,tst_y))
+})
 
 
 #Question 1.b
 
 #Generating plot of training and testing error rates against k.
 
-g=ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
+ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
   geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1,alpha = .8)+
   geom_point(color=error_colors[1], shape=19,alpha = .8)+
   geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1,alpha=.6)+
@@ -81,8 +80,6 @@ g=ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
   scale_color_manual("Legend",values=c("Training Set"=error_colors[1], "Testing Set"=error_colors[2]))+
   labs(title="Classification Error Rate", x="K", y="Error Rate")+
   theme(plot.title=element_text(hjust=0.5))
-
-print(g)
 
 
 #Question 1.c
@@ -113,14 +110,10 @@ df_contour=data.frame(x=grid[,1],y=grid[,2],z=prob)
 #Data Frame to plot the training set
 df_trn=data.frame(x1=trn[,1],x2=trn[,2],classes=trn_y)
 
-#Plotting the training set
-g2=ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)
-
-#Plotting the decision boundary
-g2=g2+geom_contour(aes(x=x,y=y,z=z),
+#Plotting the training set and decision boundary
+ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)+
+  geom_contour(aes(x=x,y=y,z=z),
                data=df_contour,size=2,colour="black",breaks = 0.5)
-  
-print(g2)
 
 ##########################
 
@@ -158,35 +151,35 @@ id.test <- sample(1:10000, 100)
 x.test <- x.test[id.test,]
 y.test <- y.test[id.test]
 
-#Helper function to find KNN predictions and the classification error rate
-#This function is declared for dplyr manipulation purposes.
-fitKNN_Error_cifar=function(i)
-{
-  set.seed(rdseed)
-  classification_error_rate(knn(x.train,x.test,cl=y.train,k=i),y.test)
-}
-
 #Values of K for experiment 2
 kvals2=c(50, 100, 200, 300, 400)
 
 #Dataframe to track the test error rates
-Cifar_Error=data.frame(kval=kvals2)
+cifar_Error=data.frame(kval=kvals2)
 
 ##Experiment 2 questions
 
 #Question 2.a
 
 #Fitting KNN for different values of K
-Cifar_Error=Cifar_Error%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error_cifar(kval))
+cifar_Error$Error = sapply(kvals2, function(i){
+  set.seed(rdseed)
+  tst_pred = knn(x.train,x.test,cl=y.train,k=i)
+  
+  (classification_error_rate(tst_pred,y.test))
+  
+})
 
 
 #Question 2.b
 
-ind_optimalK=which.min(Cifar_Error$tst_Error) #Finding optimal K
+ind_optimalK=which.min(cifar_Error$Error) #Finding index of optimal K
+optimalK2=cifar_Error$kval[ind_optimalK]
+
 
 #Fitting KNN with the optimal K
 set.seed(rdseed)
-cifar_pred=knn(x.train,x.test,cl=y.train,k=ind_optimalK)
+cifar_pred=knn(x.train,x.test,cl=y.train,k=optimalK2)
 
 #Displaying confusion matrix
 table(cifar_pred ,y.test,dnn=c("predicted","actual"))
