@@ -62,47 +62,52 @@ tst_y=tst$y
 trn$y=NULL
 tst$y=NULL
 
-#Helper function to find KNN predictions and find the classification error rate
-#This function is declared for dplyr manipulation purposes.
-fitKNN_Error=function(testing_set,true_labels,i)
-{
-  set.seed(rdseed)
-  classification_error_rate(knn(trn,testing_set,cl=trn_y,k=i),true_labels)
-}
-
-
 #Dataframe to track the error rates
 Error_df=data.frame(kval=kvals)
 
 #Question 1.a
 
-#Fitting KNN for different values of K (training data)
-Error_df=Error_df%>%group_by(kval)%>%mutate(trn_Error=fitKNN_Error(trn,trn_y,kval))
+#Fitting KNN for different values of K (training set)
+Error_df$trn_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  trn_pred = knn(trn,trn,cl=trn_y,k=i)
+  
+  (classification_error_rate(trn_pred,trn_y))
+})
 
-#Fitting KNN for different values of K (testing data)
-Error_df=Error_df%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error(tst,tst_y,kval))
+#Fitting KNN for different values of K (testing set)
+Error_df$tst_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  tst_pred = knn(trn,tst,cl=trn_y,k=i)
+  
+  (classification_error_rate(tst_pred,tst_y))
+})
 
 ```
 ## Question 1.a
+
 We have fitted KNN for both training and testing set for values of k ranging between 1, 5, ...,196 and additional values of 200, 225, 250,...,400.
 
-```{r graph1,echo=TRUE,fig.cap="Classification Error Rate against Number of Neighbors",include=FALSE, results='asis'}
+```{r graph1,echo=FALSE,fig.cap="Classification Error Rate against Number of Neighbors", include=FALSE,results='hide'}
 #Question 1.b
 
 #Generating plot of training and testing error rates against k.
 
-ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
-  geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1,alpha = .8)+
-  geom_point(color=error_colors[1], shape=19,alpha = .8)+
-  geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1,alpha=.6)+
-  geom_point(x=Error_df$kval, y=Error_df$tst_Error, color=error_colors[2], shape=15,alpha=.6)+
+g=ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
+  geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1)+
+  geom_point(color=error_colors[1], shape=19)+
+  geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1)+
+  geom_point(x=Error_df$kval, y=Error_df$tst_Error, color=error_colors[2], shape=15)+
   scale_color_manual("Legend",values=c("Training Set"=error_colors[1], "Testing Set"=error_colors[2]))+
   labs(title="Classification Error Rate", x="K", y="Error Rate")+
   theme(plot.title=element_text(hjust=0.5))
 
+print(g)
 ```
+![](graph1.png) ![](graph2.png)
 ## Question 1.b
-We present the training and testing error rates against the number of nearest neighbors on \@ref(fig:graph1). We can appreciate that for small values of k we have a low error rate on the training set in contrast we obtained high error rates for the testing set. As the value of K increases we can appreciate how the error of the training set increases while the testing set start to decrease. Both training and testing sets stabilizes and then the testing set increases again. This is consistent with class discussion since the K-NN algorithm flexibility decreases as the value of K increases, leading to an increase in bias. For small values of K this algorithm tends to overfit due to high variance. As K increases, flexibility decreases, implying that bias increases and variance decreases, therefore the test error rate graph starts to show an U shape.
+
+We present the training and testing error rates against the number of nearest neighbors on graph 1. We can appreciate that for small values of k we have a low error rate on the training set in contrast we obtained high error rates for the testing set. As the value of K increases we can appreciate how the error of the training set increases while the testing set start to decrease. Both training and testing sets stabilizes and then the testing set increases again. This is consistent with class discussion since the K-NN algorithm flexibility decreases as the value of K increases, leading to an increase in bias. For small values of K this algorithm tends to overfit due to high variance. As K increases, flexibility decreases, implying that bias increases and variance decreases, therefore the test error rate graph starts to show an U shape.
 
 ```{r,include=FALSE,message=FALSE, warning=FALSE}
 #Question 1.c
@@ -116,9 +121,10 @@ optimalK=Error_df$kval[ind_optimalK]
 
 ```
 ## Question 1.c
+
 The optimal K for our experiment is 116, dealing a training error rate of 0.1181 and a testing error rate of 0.1155.
 
-```{r,echo=FALSE,message=FALSE, warning=FALSE}
+```{r,echo=FALSE,message=FALSE, warning=FALSE,include=FALSE,results='hide'}
 #Question 1.d
 
 #Creating grid 
@@ -136,19 +142,20 @@ df_contour=data.frame(x=grid[,1],y=grid[,2],z=prob)
   
 #Data Frame to plot the training set
 df_trn=data.frame(x1=trn[,1],x2=trn[,2],classes=trn_y)
-```
 
-```{r graph2,echo=TRUE,fig.cap="Decision Boundary", include=FALSE,results='asis'}
 #Plotting the training set and decision boundary
-ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)+
+g2=ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)+
   geom_contour(aes(x=x,y=y,z=z),
                data=df_contour,size=2,colour="black",breaks = 0.5)
-
+print(g2)
 ```
+
 ## Question 1.d
-We present the training data set along with the decision boundary obtained from the optimal value K(116) on \@ref(fig:graph2). We appreciate how the decision boundary separates the training set into two well defined groups and the majority of the observations are reasonably classified correctly. There is some misclassification close to the decision boundary as expected, since the error rate for this value of K is around the 12%. So we can affirm that the decision boundary tends to predict the correct class with an 88% accuracy. Therefore we conclude that the decision boundary it is not as much sensible to new data.
+We present the training data set along with the decision boundary obtained from the optimal value K(116) on graph2. We appreciate how the decision boundary separates the training set into two well defined groups and the majority of the observations are reasonably classified correctly. There is some misclassification close to the decision boundary as expected, since the error rate for this value of K is around the 12%. So we can affirm that the decision boundary tends to predict the correct class with an 88% accuracy. Therefore we conclude that the decision boundary it is not as much sensible to new data.
 
 ```{r,include=FALSE,message=FALSE, warning=FALSE}
+#Experiment 2
+
 ##Preprocessing
 library(keras)
 cifar <- dataset_cifar10()
@@ -181,34 +188,37 @@ id.test <- sample(1:10000, 100)
 x.test <- x.test[id.test,]
 y.test <- y.test[id.test]
 
-#Helper function to find KNN predictions and the classification error rate
-#This function is declared for dplyr manipulation purposes.
-fitKNN_Error_cifar=function(i)
-{
-  set.seed(rdseed)
-  classification_error_rate(knn(x.train,x.test,cl=y.train,k=i),y.test)
-}
+set.seed(1234)
+id.train <- sample(1:50000, 5000)
+
+x.train <- x.train[id.train,]
+y.train <- y.train[id.train]
 
 #Values of K for experiment 2
 kvals2=c(50, 100, 200, 300, 400)
 
 #Dataframe to track the test error rates
-Cifar_Error=data.frame(kval=kvals2)
+cifar_Error=data.frame(kval=kvals2)
 ```
 
 ## Question 2.a
-
 ```{r,include=FALSE,message=FALSE, warning=FALSE}
 #Question 2.a
 
 #Fitting KNN for different values of K
+#Question 2.a
+
+#Fitting KNN for different values of K
 cifar_Error$Error = sapply(kvals2, function(i){
-  set.seed(rdseed)
+  set.seed(rdseed) #setting seeds for unties
   tst_pred = knn(x.train,x.test,cl=y.train,k=i)
   
   (classification_error_rate(tst_pred,y.test))
   
 })
+
+#Displaying Test Error Rates
+#print(cifar_Error)
 ```
 We have fitted KNN for the testing set for values of K = 50, 100, 200, 300 and 400. The error rate for every value of K is presented on Table 1.
 ```{r tab1, comment='', echo=FALSE, results='asis'}
@@ -217,11 +227,11 @@ We have fitted KNN for the testing set for values of K = 50, 100, 200, 300 and 4
 
 
 ## Question 2.b
-A quick look at the confusion matrix immediately shows that the misclassification is high. In particular we can quickly find the accuracy (add diagonal divided by total) yielding 41% which is as good as random guess.
+A quick look at the confusion matrix immediately shows that the misclassification is high. In particular we can quickly find the accuracy (add diagonal divided by total) yielding 36% which is as good as random guess.
 ```{r,echo=FALSE,include=FALSE,message=FALSE, warning=FALSE}
 #Question 2.b
 
-ind_optimalK=which.min(cifar_Error$tst_Error) #Finding index of optimal K
+ind_optimalK=which.min(cifar_Error$Error) #Finding index of optimal K
 optimalK2=cifar_Error$kval[ind_optimalK]
 
 
@@ -230,6 +240,7 @@ set.seed(rdseed)
 cifar_pred=knn(x.train,x.test,cl=y.train,k=optimalK2)
 
 #Displaying confusion matrix
+#print(table(cifar_pred ,y.test,dnn=c("predicted","actual")))
 conf_tab=table(cifar_pred ,y.test,dnn=c("predicted","actual"))
 
 ```
@@ -272,8 +283,6 @@ These algorithms are memory-intensive, perform poorly for high-dimensional data,
 #Packages
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
-library(data.table)
-library(dplyr) #Data manipulation
 
 rdseed=8467 #Seed to replicate results in case of a tie on KNN
 
@@ -319,25 +328,26 @@ tst_y=tst$y
 trn$y=NULL
 tst$y=NULL
 
-#Helper function to find KNN predictions and find the classification error rate
-#This function is declared for dplyr manipulation purposes.
-fitKNN_Error=function(testing_set,true_labels,i)
-{
-  set.seed(rdseed)
-  classification_error_rate(knn(trn,testing_set,cl=trn_y,k=i),true_labels)
-}
-
-
 #Dataframe to track the error rates
 Error_df=data.frame(kval=kvals)
 
 #Question 1.a
 
-#Fitting KNN for different values of K (training data)
-Error_df=Error_df%>%group_by(kval)%>%mutate(trn_Error=fitKNN_Error(trn,trn_y,kval))
+#Fitting KNN for different values of K (training set)
+Error_df$trn_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  trn_pred = knn(trn,trn,cl=trn_y,k=i)
+  
+  (classification_error_rate(trn_pred,trn_y))
+})
 
-#Fitting KNN for different values of K (testing data)
-Error_df=Error_df%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error(tst,tst_y,kval))
+#Fitting KNN for different values of K (testing set)
+Error_df$tst_Error = sapply(kvals, function(i){
+  set.seed(rdseed)
+  tst_pred = knn(trn,tst,cl=trn_y,k=i)
+  
+  (classification_error_rate(tst_pred,tst_y))
+})
 
 
 #Question 1.b
@@ -345,23 +355,26 @@ Error_df=Error_df%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error(tst,tst_y,kva
 #Generating plot of training and testing error rates against k.
 
 g=ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
-  geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1,alpha = .8)+
-  geom_point(color=error_colors[1], shape=19,alpha = .8)+
-  geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1,alpha=.6)+
-  geom_point(x=Error_df$kval, y=Error_df$tst_Error, color=error_colors[2], shape=15,alpha=.6)+
-  scale_color_manual("Legend",values=c("Training Set"=error_colors[1], "Testing Set"=error_colors[2]))+
+  geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1)+
+  geom_point(color=error_colors[1], shape=19)+
+  geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1)+
+  geom_point(x=Error_df$kval, y=Error_df$tst_Error, 
+             color=error_colors[2], shape=15)+
+  scale_color_manual("Legend",values=c("Training Set"=error_colors[1], 
+                                       "Testing Set"=error_colors[2]))+
   labs(title="Classification Error Rate", x="K", y="Error Rate")+
   theme(plot.title=element_text(hjust=0.5))
 
 print(g)
 
-
 #Question 1.c
 
-#Finding the index of the optimal K, this is the index of the least test error rate
+#Finding the index of the optimal K, this is the 
+#index of the least test error rate
 ind_optimalK=which.min(Error_df$tst_Error)
 
-Error_df[ind_optimalK,] #The row of the optimal k contains the associated errors for training and testing.
+Error_df[ind_optimalK,] #The row of the optimal k contains 
+                        #the associated errors for training and testing.
 
 optimalK=Error_df$kval[ind_optimalK]
 
@@ -384,13 +397,10 @@ df_contour=data.frame(x=grid[,1],y=grid[,2],z=prob)
 #Data Frame to plot the training set
 df_trn=data.frame(x1=trn[,1],x2=trn[,2],classes=trn_y)
 
-#Plotting the training set
-g2=ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)
-
-#Plotting the decision boundary
-g2=g2+geom_contour(aes(x=x,y=y,z=z),
+#Plotting the training set and decision boundary
+g2=ggplot()+geom_point(aes(x=x1,y=x2,color=classes),data=df_trn)+
+  geom_contour(aes(x=x,y=y,z=z),
                data=df_contour,size=2,colour="black",breaks = 0.5)
-  
 print(g2)
 
 ##########################
@@ -429,36 +439,45 @@ id.test <- sample(1:10000, 100)
 x.test <- x.test[id.test,]
 y.test <- y.test[id.test]
 
-#Helper function to find KNN predictions and the classification error rate
-#This function is declared for dplyr manipulation purposes.
-fitKNN_Error_cifar=function(i)
-{
-  set.seed(rdseed)
-  classification_error_rate(knn(x.train,x.test,cl=y.train,k=i),y.test)
-}
+set.seed(1234)
+id.train <- sample(1:50000, 5000)
+
+x.train <- x.train[id.train,]
+y.train <- y.train[id.train]
 
 #Values of K for experiment 2
 kvals2=c(50, 100, 200, 300, 400)
 
 #Dataframe to track the test error rates
-Cifar_Error=data.frame(kval=kvals2)
+cifar_Error=data.frame(kval=kvals2)
 
 ##Experiment 2 questions
 
 #Question 2.a
 
 #Fitting KNN for different values of K
-Cifar_Error=Cifar_Error%>%group_by(kval)%>%mutate(tst_Error=fitKNN_Error_cifar(kval))
+cifar_Error$Error = sapply(kvals2, function(i){
+  set.seed(rdseed) #setting seeds for unties
+  tst_pred = knn(x.train,x.test,cl=y.train,k=i)
+  
+  (classification_error_rate(tst_pred,y.test))
+  
+})
 
+#Displaying Test Error Rates
+print(cifar_Error)
 
 #Question 2.b
 
-ind_optimalK=which.min(Cifar_Error$tst_Error) #Finding optimal K
+ind_optimalK=which.min(cifar_Error$Error) #Finding index of optimal K
+optimalK2=cifar_Error$kval[ind_optimalK]
+
 
 #Fitting KNN with the optimal K
 set.seed(rdseed)
-cifar_pred=knn(x.train,x.test,cl=y.train,k=ind_optimalK)
+cifar_pred=knn(x.train,x.test,cl=y.train,k=optimalK2)
 
 #Displaying confusion matrix
-table(cifar_pred ,y.test,dnn=c("predicted","actual"))
+print(table(cifar_pred ,y.test,dnn=c("predicted","actual")))
+
 ```

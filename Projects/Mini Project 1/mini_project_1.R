@@ -51,7 +51,7 @@ Error_df=data.frame(kval=kvals)
 
 #Question 1.a
 
-#Fitting KNN for different values of K (training data)
+#Fitting KNN for different values of K (training set)
 Error_df$trn_Error = sapply(kvals, function(i){
   set.seed(rdseed)
   trn_pred = knn(trn,trn,cl=trn_y,k=i)
@@ -59,7 +59,7 @@ Error_df$trn_Error = sapply(kvals, function(i){
   (classification_error_rate(trn_pred,trn_y))
 })
 
-#Fitting KNN for different values of K (testing data)
+#Fitting KNN for different values of K (testing set)
 Error_df$tst_Error = sapply(kvals, function(i){
   set.seed(rdseed)
   tst_pred = knn(trn,tst,cl=trn_y,k=i)
@@ -75,9 +75,11 @@ Error_df$tst_Error = sapply(kvals, function(i){
 g=ggplot(data=Error_df, aes(x=kval, y=trn_Error))+
   geom_line(aes(y=trn_Error, color=graph_legend[1]), size=1)+
   geom_point(color=error_colors[1], shape=19)+
-  geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1,alpha=.6)+
-  geom_point(x=Error_df$kval, y=Error_df$tst_Error, color=error_colors[2], shape=15,alpha=.6)+
-  scale_color_manual("Legend",values=c("Training Set"=error_colors[1], "Testing Set"=error_colors[2]))+
+  geom_line(aes(y=tst_Error, color=graph_legend[2]), size=1)+
+  geom_point(x=Error_df$kval, y=Error_df$tst_Error, 
+             color=error_colors[2], shape=15)+
+  scale_color_manual("Legend",values=c("Training Set"=error_colors[1], 
+                                       "Testing Set"=error_colors[2]))+
   labs(title="Classification Error Rate", x="K", y="Error Rate")+
   theme(plot.title=element_text(hjust=0.5))
 
@@ -85,10 +87,12 @@ print(g)
 
 #Question 1.c
 
-#Finding the index of the optimal K, this is the index of the least test error rate
+#Finding the index of the optimal K, this is the 
+#index of the least test error rate
 ind_optimalK=which.min(Error_df$tst_Error)
 
-Error_df[ind_optimalK,] #The row of the optimal k contains the associated errors for training and testing.
+Error_df[ind_optimalK,] #The row of the optimal k contains 
+                        #the associated errors for training and testing.
 
 optimalK=Error_df$kval[ind_optimalK]
 
@@ -153,6 +157,12 @@ id.test <- sample(1:10000, 100)
 x.test <- x.test[id.test,]
 y.test <- y.test[id.test]
 
+set.seed(1234)
+id.train <- sample(1:50000, 5000)
+
+x.train <- x.train[id.train,]
+y.train <- y.train[id.train]
+
 #Values of K for experiment 2
 kvals2=c(50, 100, 200, 300, 400)
 
@@ -165,13 +175,15 @@ cifar_Error=data.frame(kval=kvals2)
 
 #Fitting KNN for different values of K
 cifar_Error$Error = sapply(kvals2, function(i){
-  set.seed(rdseed)
+  set.seed(rdseed) #setting seeds for unties
   tst_pred = knn(x.train,x.test,cl=y.train,k=i)
   
   (classification_error_rate(tst_pred,y.test))
   
 })
 
+#Displaying Test Error Rates
+print(cifar_Error)
 
 #Question 2.b
 
@@ -184,6 +196,6 @@ set.seed(rdseed)
 cifar_pred=knn(x.train,x.test,cl=y.train,k=optimalK2)
 
 #Displaying confusion matrix
-table(cifar_pred ,y.test,dnn=c("predicted","actual"))
+print(table(cifar_pred ,y.test,dnn=c("predicted","actual")))
 
 
