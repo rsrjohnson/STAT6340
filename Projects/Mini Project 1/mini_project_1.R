@@ -1,3 +1,10 @@
+#Student Name: Randy Suarez Rodes
+#Course: STAT 6340
+#Mini Project 1
+#February 9, 2021
+#R version 4.0.3
+
+
 #Packages
 library(ggplot2) #Used for graphics an visual representations
 library(class) #Used for KNN models
@@ -31,12 +38,13 @@ tst=read.csv("1-test_data.csv", stringsAsFactors = TRUE)
 
 #Exploring the data set
 str(trn)
-summary(trn)
+print(summary(trn))
 
 str(tst)
-summary(tst)
+print(summary(tst))
 #We can appreciate that the class labels are equally distributed
 #in both training and testing sets
+#Also normalization is not required since the attributes are in similar scale
 
 #Saving training and testing labels
 trn_y=trn$y
@@ -91,7 +99,7 @@ print(g)
 #index of the least test error rate
 ind_optimalK=which.min(Error_df$tst_Error)
 
-Error_df[ind_optimalK,] #The row of the optimal k contains 
+print(Error_df[ind_optimalK,]) #The row of the optimal k contains 
                         #the associated errors for training and testing.
 
 optimalK=Error_df$kval[ind_optimalK]
@@ -197,5 +205,3 @@ cifar_pred=knn(x.train,x.test,cl=y.train,k=optimalK2)
 
 #Displaying confusion matrix
 print(table(cifar_pred ,y.test,dnn=c("predicted","actual")))
-
-
