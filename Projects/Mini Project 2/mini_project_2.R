@@ -1,9 +1,12 @@
 #Packages
-library(ggplot2) #Used for graphics an visual representations
-library(GGally) #Visualization of correlations and pairs
-library(ggpubr)
+library(ggplot2) #Used for graphics and visual representations
+library(GGally) #Visualization of pairs
+library(ggpubr) #Graphics handling
 library(ggcorrplot) #Visualization of correlations
-library(fastDummies)
+library(fastDummies) #One hot encoding
+library(MASS) #Used for lda and qda analysis
+
+
 
 rdseed=8467 #Seed to replicate results in case of a tie on KNN
 
@@ -60,7 +63,7 @@ ggpairs(wine[,1:6], upper=list(continuous="points"),axisLabels="internal")
 
 #Question 1.b
 
-m_Flavor= lm(Quality~Flavor,data = wine)
+#m_Flavor= lm(Quality~Flavor,data = wine)
 # Residual plot
 
 # QQ plot
@@ -68,29 +71,29 @@ m_Flavor= lm(Quality~Flavor,data = wine)
 # Time series plot of residuals
 
 
-wine$logQuality=sqrt(wine$Quality)
-
-m_transform=lm(logQuality~Flavor,data=wine)
-
-# Residual plot
-plot(fitted(m_Flavor), resid(m_Flavor))
-abline(h = 0)
-plot(fitted(m_transform), resid(m_transform))
-abline(h = 0)
-# QQ plot
-qqnorm(resid(m_Flavor))
-qqnorm(resid(m_transform))
-# Time series plot of residuals
-plot(resid(m_Flavor), type="l")
-abline(h=0)
-plot(resid(m_transform), type="l")
-abline(h=0)
-
-g_Flavor=ggplot(wine,aes(x=Flavor,y=Quality))+geom_point()+
-  geom_smooth(method = "lm",se=FALSE,color="green")
-
-g_Flavor_log=ggplot(wine,aes(x=Flavor,y=logQuality))+geom_point()+
-  geom_smooth(method = "lm",se=FALSE,color="green")
+# wine$logQuality=sqrt(wine$Quality)
+# 
+# m_transform=lm(logQuality~Flavor,data=wine)
+# 
+# # Residual plot
+# plot(fitted(m_Flavor), resid(m_Flavor))
+# abline(h = 0)
+# plot(fitted(m_transform), resid(m_transform))
+# abline(h = 0)
+# # QQ plot
+# qqnorm(resid(m_Flavor))
+# qqnorm(resid(m_transform))
+# # Time series plot of residuals
+# plot(resid(m_Flavor), type="l")
+# abline(h=0)
+# plot(resid(m_transform), type="l")
+# abline(h=0)
+# 
+# g_Flavor=ggplot(wine,aes(x=Flavor,y=Quality))+geom_point()+
+#   geom_smooth(method = "lm",se=FALSE,color="green")
+# 
+# g_Flavor_log=ggplot(wine,aes(x=Flavor,y=logQuality))+geom_point()+
+#   geom_smooth(method = "lm",se=FALSE,color="green")
 
 #Standardization and log transform
 # wine_dummy_std=wine_std
@@ -158,4 +161,238 @@ ggarrange(g_Aroma, g_Body, g_Flavor,
 m_Full=lm(Quality~.,data=wine)
 summary(m_Full)
 
-#We can observe that the Flavor and Region predictors We can reject the null hypothesis for predictor Flavor. Even 
+#We can observe that we can reject the null hypothesis  for the Flavor and Region predictors.
+#We will proceed to drop one variable at a time and recheck the p-values.
+
+#Question 1.e
+
+m1=lm(Quality~.-Clarity,data=wine) #dropping Clarity
+summary(m1)
+
+m2=lm(Quality~.-Clarity-Body,data=wine) #dropping Clarity and Body
+summary(m2)
+
+m3=lm(Quality~.-Clarity-Body-Aroma,data=wine) #dropping Clarity, Body and Aroma
+summary(m3)
+
+m4=lm(Quality~.-Clarity-Body-Aroma-Oakiness,data=wine) #dropping Clarity, Body, Aroma and Oakiness
+summary(m4)
+
+#Finally on m4 all predictors all predictors are statistically significant for the response variable
+
+anova(m4,m_Full)
+
+#The anova test confirm our findings, with a p-value of 0.6528, we fail to reject the null hypothesis, this is all additional predictors are 0.
+
+
+#Exploring interactions
+
+m_final=lm(Quality~Flavor + Region,data=wine)
+summary(m_final)
+m_final2=lm(Quality~Flavor + Region + Flavor:Region,data=wine)
+summary(m_final2)
+
+anova(m_final,m_final2)
+#With a p-value of 0.3378, we fail to reject the null hypothesis, this is all additional predictors are 0,
+#meaning the interactions between Flavor and Region are not meaningful for our model
+#Also notice that the gain on the adjusted R-squared is very small, another evidence that these extra predictors add overfit to our model.
+
+#Question 1.f
+
+#model Quality = Intercept +  Flavor + Region2 + Region3
+#      Quality = 7.0943 + (1.1155)Flavor + -1.5335(Region2) + 1.2234(Region3)
+
+
+
+#Question 1.g
+
+
+
+
+
+
+k=which(wine$Region=="1")
+predict1=fitted(m_final)[k]
+
+
+#ggplot(wine,aes(x=Flavor,y=Quality,color=Region))+geom_point()+geom_line(aes(x=wine$Flavor[k],y=predict1),data=wine[k,])
+
+ggplot(wine,aes(x=Flavor,y=Quality,color=Region))+geom_point()+geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1] )
+
+
+#95% prediction intervals
+predict (m_final ,wine[k,], se.fit = TRUE,
+         interval ="prediction")
+
+#95% prediction intervals
+predict (m_final ,wine[k,], se.fit = TRUE,
+         interval ="confidence")
+
+#95% prediction intervals
+predict (m_final ,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)),
+         interval ="prediction")
+
+#95% prediction intervals
+predict (m_final ,wine[k,], se.fit = TRUE,
+         interval ="confidence")
+
+
+predict (m_final ,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)),
+         interval ="prediction")
+
+predict (m_final ,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)),
+         interval ="confidence")
+
+
+
+#########################
+
+#Experiment 2
+
+admission = read.csv("admission.csv")
+admission$Group=as.factor(admission$Group)
+
+k1=which(admission$Group==1)
+k2=which(admission$Group==2)
+k3=which(admission$Group==3)
+
+
+
+adm.test=rbind(admission[k1,][1:5,],admission[k2,][1:5,],admission[k3,][1:5,])
+
+adm.train=rbind(admission[k1,][-(1:5),],admission[k2,][-(1:5),],admission[k3,][-(1:5),])
+
+
+#Question 2.a
+g=ggplot(adm.train,aes(x=GPA,y=GMAT,color=Group))+geom_point()
+g_GPA=ggplot(adm.train,(aes(Group,GPA)))+geom_boxplot()
+g_GMAT=ggplot(adm.train,(aes(Group,GMAT)))+geom_boxplot()
+ggarrange(g,g_GPA, g_GMAT,
+          labels = c("GMAT vs GPA","Boxplot GPA", "Boxplot GMAT"),
+          ncol = 3, nrow = 1)
+
+
+
+#Question 2.b
+
+mlda = lda(Group ~ GPA + GMAT, data = adm.train)
+
+#Creating grid 
+x1=seq(min(adm.train[,1]),max(adm.train[,1]),length.out=100)
+x2=seq(min(adm.train[,2]),max(adm.train[,2]),length.out=100)
+grid = expand.grid(x=x1, y=x2)
+
+#Classifying the grid
+names(grid)=names(adm.train)[1:2]
+grid.pred = predict(mlda, grid)
+
+prob = grid.pred$posterior
+prob12=pmax(prob[,1],prob[,2]) #we just need the probabilities of max of 1 and 2 
+                               #since 3 can be obtain from the others
+
+#Data Frame to generate the surface for the contour
+df_contour.lda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
+
+
+#Plotting the training set and decision boundary
+g_lda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,colour="purple",breaks = 0.5)
+print(g_lda)
+
+pred_train_lda=predict(mlda, adm.train)$class
+
+M1=table(pred_train_lda,adm.train$Group,dnn=c("predicted","actual"))
+acc_train_lda=sum(diag(M1))/sum(M1)
+
+
+pred_test_lda=predict(mlda, adm.test)$class
+
+M2=table(pred_test_lda,adm.test$Group,dnn=c("predicted","actual"))
+acc_test_lda=sum(diag(M2))/sum(M2)
+
+
+#Question 2.c
+
+mqda = qda(Group ~ GPA + GMAT, data = adm.train)
+
+grid.pred.qda = predict(mqda, grid)
+
+prob = grid.pred.qda$posterior
+prob12=pmax(prob[,1],prob[,2]) #we just need the probabilities of max of 1 and 2 
+#since 3 can be obtain from the others
+
+#Data Frame to generate the surface for the contour
+df_contour.qda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
+
+
+#Plotting the training set and decision boundary
+g_qda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,colour="gold1",breaks = 0.5)
+print(g_qda)
+
+pred_train_qda=predict(mqda, adm.train)$class
+
+M3=table(pred_train_qda,adm.train$Group,dnn=c("predicted","actual"))
+acc_train_qda=sum(diag(M3))/sum(M3)
+
+
+pred_test_qda=predict(mqda, adm.test)$class
+
+M4=table(pred_test_qda,adm.test$Group,dnn=c("predicted","actual"))
+acc_test_qda=sum(diag(M4))/sum(M4)
+
+
+#Question 2.d
+g_train=g+theme(legend.position = "none")+geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,colour="purple",breaks = 0.5)+
+  geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,colour="gold1",breaks = 0.5)
+
+
+#Creating grid 
+x1=seq(min(adm.test[,1]),max(adm.test[,1]),length.out=100)
+x2=seq(min(adm.test[,2]),max(adm.test[,2]),length.out=100)
+grid = expand.grid(x=x1, y=x2)
+
+#Classifying the grid
+names(grid)=names(adm.train)[1:2]
+grid.pred = predict(mlda, grid)
+
+prob = grid.pred$posterior
+prob12=pmax(prob[,1],prob[,2]) #we just need the probabilities of max of 1 and 2 
+#since 3 can be obtain from the others
+
+#Data Frame to generate the surface for the contour
+df_contour.lda_test=data.frame(x=grid[,1],y=grid[,2],z=prob12)
+
+grid.pred.qda = predict(mqda, grid)
+
+prob = grid.pred.qda$posterior
+prob12=pmax(prob[,1],prob[,2]) #we just need the probabilities of max of 1 and 2 
+#since 3 can be obtain from the others
+
+#Data Frame to generate the surface for the contour
+df_contour.qda_test=data.frame(x=grid[,1],y=grid[,2],z=prob12)
+
+g2=ggplot(adm.test,aes(x=GPA,y=GMAT,color=Group))+geom_point()
+
+g_test=g2+geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda_test,size=1,colour="purple",breaks = 0.5)+
+  geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda_test,size=1,colour="gold1",breaks = 0.5)+
+  theme(legend.position = "none",axis.title.y = element_blank())
+
+
+ggarrange(g_train, g_test,
+          labels = c("Training Set", "Testing Set"),
+          ncol = 2, nrow = 1)
+
+
+########################
+
+
+#Experiment 3
+
+diabetes <- read.csv("diabetes.csv")
+
+#Question 3.a
+
+#Question 3.b
+
+#Question 3.c
+
+#Question 3.d
