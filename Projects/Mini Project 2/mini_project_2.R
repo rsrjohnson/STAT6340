@@ -151,12 +151,14 @@ g_Body=ggplot(wine,aes(x=Body,y=Quality))+geom_point()+
   geom_smooth(method = "lm",se=FALSE,color="blue")
   
 g_Flavor=ggplot(wine,aes(x=Flavor,y=Quality))+geom_point()+
-  geom_smooth(method = "lm",se=FALSE,color="green")
+ geom_smooth(method = "lm",se=FALSE,color="green")
  
 
 ggarrange(g_Aroma, g_Body, g_Flavor,
                     labels = c("Quality vs Aroma", "Quality vs Body", "Quality vs Flavor"),
                     ncol = 3, nrow = 1)
+
+
 
 #For the predictor Region, we will explore additional graphics when we study interactions effects.
 
@@ -165,7 +167,7 @@ ggarrange(g_Aroma, g_Body, g_Flavor,
 m_Full=lm(Quality~.,data=wine)
 summary(m_Full)
 
-#We can observe that we can reject the null hypothesis for the Flavor and Region predictors.
+#We can reject the null hypothesis for the Flavor and Region predictors.
 #We will proceed to drop one variable at a time and recheck the p-values.
 
 #Question 1.e
@@ -199,7 +201,35 @@ summary(m_final2)
 anova(m_final,m_final2)
 #With a p-value of 0.3378, we fail to reject the null hypothesis, this is all additional predictors are 0,
 #meaning the interactions between Flavor and Region are not meaningful for our model
-#Also notice that the gain on the adjusted R-squared is very small, another evidence that these extra predictors add overfit to our model.
+#Also notice that the gain on the adjusted R-squared is very small, another evidence that these extra predictors add overfit to the model.
+
+#Verifying model assumptions:
+
+
+ggplot(m_final, aes(Flavor, Quality,color=Region)) +
+  geom_point()+geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1],color="#F8766D" ,size=0.5)+
+  geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1]+m_final$coefficients[3],color= "#00BA38",size=0.5)+
+  geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1]+m_final$coefficients[4],color= "#619CFF",size=0.5)
+
+#We can appreciate the lines of our model for each region.
+
+ggplot(m_final, aes(Flavor, Quality,color=Region)) +
+  geom_point()+geom_line(aes(y = .fitted),size=1)
+  
+
+# Residual plot
+
+plot(fitted(m_final), resid(m_final))
+abline(h = 0)
+
+# QQ plot
+
+qqnorm(resid(m_final))
+
+# Time series plot of residuals
+
+plot(resid(m_final), type="l")
+abline(h=0)
 
 #Question 1.f
 
