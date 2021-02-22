@@ -3,6 +3,8 @@ library(ggplot2) #Used for graphics and visual representations
 library(GGally) #Visualization of pairs
 library(ggpubr) #Graphics handling
 library(ggcorrplot) #Visualization of correlations
+library(stargazer)
+
 
 library(fastDummies) #One hot encoding categorical data
 library(MASS) #Used for ld and qd analysis
@@ -47,7 +49,7 @@ wine_dummy$Quality=temp
 corr1 = round(cor(wine_dummy), 2)
 
 
-ggcorrplot(corr1,lab=TRUE,type = "full")
+print(ggcorrplot(corr1,lab=TRUE,type = "full"))
 #Visualizing the correlation matrix we can see that predictors Oakiness and Clarity have a very low correlation with Quality
 #Therefore it is likely that this variables will not provide much information to predict Quality
 
@@ -59,11 +61,11 @@ ggcorrplot(corr1,lab=TRUE,type = "full")
 #Another point to notice it that predictors Aroma, Body, Flavor and Region are highly correlated. This can cause overfitting issues, 
 #so with further analysis one or some of this predictors might be dropped since they can be explained by the others.
 
-ggpairs(wine[,1:6], upper=list(continuous="cor"),axisLabels="internal")
+print(ggpairs(wine[,1:6], upper=list(continuous="cor"),axisLabels="internal"))
 #As expected from the correlation matrix we can notice that the Predictors Aroma, Body and Flavor exhibit a positive linear relation with Quality. 
 
 g_region=ggplot(wine,aes(Region,Quality,fill=Region))+geom_boxplot()
-
+print(g_region)
 
 #Question 1.b
 
@@ -142,21 +144,21 @@ summary(m_Region)
 #This is consistent with our previous exploration.
 
 
-#g_Region=ggplot(wine,aes(x=Region,y=Quality))+geom_point()
+g_Aroma=ggplot(m_Aroma,aes(x=Aroma,y=Quality))+geom_point()+
+  geom_line(aes(y = .fitted),size=1,color="green")
 
-g_Aroma=ggplot(wine,aes(x=Aroma,y=Quality))+geom_point()+
-  geom_smooth(method = "lm",se=FALSE,color="red")
-
-g_Body=ggplot(wine,aes(x=Body,y=Quality))+geom_point()+
-  geom_smooth(method = "lm",se=FALSE,color="blue")
+g_Body=ggplot(m_Body,aes(x=Body,y=Quality))+geom_point()+
+  theme(axis.title.y = element_blank())+
+  geom_line(aes(y = .fitted),size=1,color="blue")
   
-g_Flavor=ggplot(wine,aes(x=Flavor,y=Quality))+geom_point()+
- geom_smooth(method = "lm",se=FALSE,color="green")
+g_Flavor=ggplot(m_Flavor,aes(x=Flavor,y=Quality))+geom_point()+
+  theme(axis.title.y = element_blank())+
+  geom_line(aes(y = .fitted),size=1,color="red")
  
 
-ggarrange(g_Aroma, g_Body, g_Flavor,
+print(ggarrange(g_Aroma, g_Body, g_Flavor,
                     labels = c("Quality vs Aroma", "Quality vs Body", "Quality vs Flavor"),
-                    ncol = 3, nrow = 1)
+                    ncol = 3, nrow = 1))
 
 
 
@@ -214,23 +216,35 @@ ggplot(m_final, aes(Flavor, Quality,color=Region)) +
 #We can appreciate the lines of our model for each region.
 
 ggplot(m_final, aes(Flavor, Quality,color=Region)) +
-  geom_point()+geom_line(aes(y = .fitted),size=1)
+  geom_point()+geom_line(aes(y = .fitted),size=1, show.legend =F)
   
 
-# Residual plot
+#Residual plot
 
-plot(fitted(m_final), resid(m_final))
-abline(h = 0)
+ggplot(m_final,aes(m_final$fitted.values, m_final$residuals)) +
+  geom_point() +
+  geom_hline(yintercept=0,color="gray")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Residuals vs Fitted")+
+  labs(y="Residuals", x = "Fitted Values")
 
-# QQ plot
+#QQ plot
+ggplot(m_final, aes(sample = .stdresid))+ stat_qq() + stat_qq_line()+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Normal Q-Q Plot")+
+  labs(y="Sample Quantiles", x = "Theoretical Quantiles")
 
-qqnorm(resid(m_final))
 
-# Time series plot of residuals
+#Time series plot of residuals
 
-plot(resid(m_final), type="l")
-abline(h=0)
+#Data Frame to plot Residuals Time Series
+df.resid=data.frame(Index=1:nrow(wine),Residuals=m_final$residuals)
 
+ggplot(df.resid,aes(Index,Residuals))+geom_line()+
+  geom_hline(yintercept=0,color="gray",linetype="dashed")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Residuals Time Series")
+  
 #Question 1.f
 
 #model Quality = Intercept +  Flavor + Region2 + Region3
@@ -240,53 +254,29 @@ abline(h=0)
 
 #Question 1.g
 
-
-k=which(wine$Region=="1")
-predict1=m_final$fitted.values[k]
-
-
-#ggplot(wine,aes(x=Flavor,y=Quality,color=Region))+geom_point()+geom_line(aes(x=wine$Flavor[k],y=predict1),data=wine[k,])
-
-ggplot(wine,aes(x=Flavor,y=Quality,color=Region))+geom_point()+geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1] )
-
-
-#95% prediction intervals
-predict (m_final ,wine[k,], se.fit = TRUE,
-         interval ="prediction")
-
-#95% confidence intervals
-predict (m_final ,wine[k,], se.fit = TRUE,
-         interval ="confidence")
+predicted=predict(m_final,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)))
 
 #95% prediction intervals
 predict (m_final ,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)),
          interval ="prediction")
 
 #95% confidence intervals
-predict (m_final ,wine[k,], se.fit = TRUE,
-         interval ="confidence")
-
-
-predict (m_final ,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)),
-         interval ="prediction")
-
 predict (m_final ,data.frame(Flavor=mean(wine$Flavor),Region=as.factor(1)),
          interval ="confidence")
-
 
 
 #########################
 
 #Experiment 2
 
+#Reading the data
 admission = read.csv("admission.csv")
 admission$Group=as.factor(admission$Group)
 
+#Building training and testing sets
 k1=which(admission$Group==1)
 k2=which(admission$Group==2)
 k3=which(admission$Group==3)
-
-
 
 adm.test=rbind(admission[k1,][1:5,],admission[k2,][1:5,],admission[k3,][1:5,])
 
@@ -294,6 +284,7 @@ adm.train=rbind(admission[k1,][-(1:5),],admission[k2,][-(1:5),],admission[k3,][-
 
 
 #Question 2.a
+
 g=ggplot(adm.train,aes(x=GPA,y=GMAT,color=Group))+geom_point()
 g_GPA=ggplot(adm.train,aes(Group,GPA,fill=Group))+geom_boxplot()
 g_GMAT=ggplot(adm.train,aes(Group,GMAT,fill=Group))+geom_boxplot()
@@ -317,7 +308,7 @@ names(grid)=names(adm.train)[1:2]
 grid.pred = predict(mlda, grid)
 
 prob = grid.pred$posterior
-prob12=pmax(prob[,1],prob[,2]) #we just need the probabilities of max of 1 and 2 
+prob12=pmax(prob[,1],prob[,2]) #we just need the maximum probabilities over 1 and 2 
                                #since 3 can be obtain from the others
 
 #Data Frame to generate the surface for the contour
@@ -330,12 +321,13 @@ print(g_lda)
 
 pred_train_lda=predict(mlda, adm.train)$class
 
+#lda Confusion Matrix for Training Set
 M1=table(pred_train_lda,adm.train$Group,dnn=c("predicted","actual"))
 acc_train_lda=sum(diag(M1))/sum(M1)
 
 
 pred_test_lda=predict(mlda, adm.test)$class
-
+#lda Confusion Matrix for Testing Set
 M2=table(pred_test_lda,adm.test$Group,dnn=c("predicted","actual"))
 acc_test_lda=sum(diag(M2))/sum(M2)
 
@@ -359,19 +351,20 @@ g_qda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,colour="gold
 print(g_qda)
 
 pred_train_qda=predict(mqda, adm.train)$class
-
+#qda Confusion Matrix for Training Set
 M3=table(pred_train_qda,adm.train$Group,dnn=c("predicted","actual"))
 acc_train_qda=sum(diag(M3))/sum(M3)
 
 
 pred_test_qda=predict(mqda, adm.test)$class
-
+#qda Confusion Matrix for Testing Set
 M4=table(pred_test_qda,adm.test$Group,dnn=c("predicted","actual"))
 acc_test_qda=sum(diag(M4))/sum(M4)
 
 
 #Question 2.d
-g_train=g+theme(legend.position = "none")+geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,colour="purple",breaks = 0.5)+
+g_train=g+theme(legend.position = "none")+
+  geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,colour="purple",breaks = 0.5)+
   geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,colour="gold1",breaks = 0.5)
 
 
