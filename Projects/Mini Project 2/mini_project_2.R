@@ -3,7 +3,6 @@ library(ggplot2) #Used for graphics and visual representations
 library(GGally) #Visualization of pairs
 library(ggpubr) #Graphics handling
 library(ggcorrplot) #Visualization of correlations
-library(stargazer)
 
 
 library(fastDummies) #One hot encoding categorical data
@@ -24,7 +23,7 @@ wine=raw_data
 #Converting Region to factor
 wine$Region=as.factor(wine$Region)
 
-#Question 1.a
+####Question 1.a####
 
 #Exploring correlations
 
@@ -67,59 +66,25 @@ print(ggpairs(wine[,1:6], upper=list(continuous="cor"),axisLabels="internal"))
 g_region=ggplot(wine,aes(Region,Quality,fill=Region))+geom_boxplot()
 print(g_region)
 
-#Question 1.b
+####Question 1.b####
 
-#m_Flavor= lm(Quality~Flavor,data = wine)
-# Residual plot
+#Exploring boxplot of Quality to identify possible outliers
+print(ggplot(wine ,aes(y=Quality))+geom_boxplot(fill='#A4A4A4', color="black",outlier.colour = "red", outlier.shape = 1))
+#No visible outliers detected
 
-# QQ plot
+#Exploring Histogram 
+print(ggplot(wine, aes(x=Quality)) + geom_histogram(col="black",fill="#F8766D",breaks=7:17, 
+          position="identity", alpha=0.5))
+#The quality distribution looks approximately normal.
 
-# Time series plot of residuals
-
-
-# wine$logQuality=sqrt(wine$Quality)
-# 
-# m_transform=lm(logQuality~Flavor,data=wine)
-# 
-# # Residual plot
-# plot(fitted(m_Flavor), resid(m_Flavor))
-# abline(h = 0)
-# plot(fitted(m_transform), resid(m_transform))
-# abline(h = 0)
-# # QQ plot
-# qqnorm(resid(m_Flavor))
-# qqnorm(resid(m_transform))
-# # Time series plot of residuals
-# plot(resid(m_Flavor), type="l")
-# abline(h=0)
-# plot(resid(m_transform), type="l")
-# abline(h=0)
-# 
-# g_Flavor=ggplot(wine,aes(x=Flavor,y=Quality))+geom_point()+
-#   geom_smooth(method = "lm",se=FALSE,color="green")
-# 
-# g_Flavor_log=ggplot(wine,aes(x=Flavor,y=logQuality))+geom_point()+
-#   geom_smooth(method = "lm",se=FALSE,color="green")
-
-#Standardization and log transform
-# wine_dummy_std=wine_std
-# wine_dummy_std=dummy_cols(wine_dummy_std, select_columns = "Region",remove_first_dummy = TRUE)
-# wine_dummy_std$Region=NULL
-# 
-# temp=wine_dummy_std$Quality
-# wine_dummy_std$Quality=NULL
-# wine_dummy_std$Quality=temp
-# corr_std = round(cor(wine_dummy_std), 2)
-# ggcorrplot(corr_std,lab=TRUE,type = "full")
-# 
-# 
-# wine_log=log(wine[,1:6])
-# corr_log=round(cor(wine_log), 2)
-# ggcorrplot(corr_log,lab=TRUE,type = "full")
+#At this moment we consider that transformation is not required and 
+#we will check model assumptions once we find an appropriate model
 
 
-#Question 1.c
 
+####Question 1.c####
+
+#Fitting one simple regression model for each predictor
 m_Clarity=lm(Quality~Clarity,data=wine)
 
 m_Aroma=lm(Quality~Aroma,data=wine)
@@ -155,17 +120,16 @@ g_Flavor=ggplot(m_Flavor,aes(x=Flavor,y=Quality))+geom_point()+
   theme(axis.title.y = element_blank())+
   geom_line(aes(y = .fitted),size=1,color="red")
  
-
+#Visualizing significant continuous predictors
 print(ggarrange(g_Aroma, g_Body, g_Flavor,
                     labels = c("Quality vs Aroma", "Quality vs Body", "Quality vs Flavor"),
                     ncol = 3, nrow = 1))
 
 
 
-#For the predictor Region, we will explore additional graphics when we study interactions effects.
+####Question 1.d####
 
-
-#Question 1.d
+#Fitting the full model
 m_Full=lm(Quality~.,data=wine)
 summary(m_Full)
 
@@ -174,6 +138,7 @@ summary(m_Full)
 
 #Question 1.e
 
+#Dropping one predictor at a time
 m1=lm(Quality~.-Clarity,data=wine) #dropping Clarity
 summary(m1)
 
@@ -186,11 +151,11 @@ summary(m3)
 m4=lm(Quality~.-Clarity-Body-Aroma-Oakiness,data=wine) #dropping Clarity, Body, Aroma and Oakiness
 summary(m4)
 
-#Finally on m4 all predictors all are statistically significant for the response variable
+#Finally on m4 all predictors are statistically significant for the response variable
 
 anova(m4,m_Full)
-
-#The anova test confirms our findings. With a p-value of 0.6528, we fail to reject the null hypothesis, this is all additional predictors are 0.
+#The anova test confirms our findings. With a p-value of 0.6528, 
+#we fail to reject the null hypothesis, this is all additional predictors are 0.
 
 
 #Exploring interactions
@@ -205,23 +170,21 @@ anova(m_final,m_final2)
 #meaning the interactions between Flavor and Region are not meaningful for our model
 #Also notice that the gain on the adjusted R-squared is very small, another evidence that these extra predictors add overfit to the model.
 
-#Verifying model assumptions:
 
 
-ggplot(m_final, aes(Flavor, Quality,color=Region)) +
-  geom_point()+geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1],color="#F8766D" ,size=0.5)+
-  geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1]+m_final$coefficients[3],color= "#00BA38",size=0.5)+
-  geom_abline(slope=m_final$coefficients[2],intercept = m_final$coefficients[1]+m_final$coefficients[4],color= "#619CFF",size=0.5)
 
-#We can appreciate the lines of our model for each region.
+#We can appreciate the lines of our final model for each region.
 
-ggplot(m_final, aes(Flavor, Quality,color=Region)) +
-  geom_point()+geom_line(aes(y = .fitted),size=1, show.legend =F)
+print(ggplot(m_final, aes(Flavor, Quality,color=Region)) +
+  geom_point()+geom_line(aes(y = .fitted),size=1, show.legend =F))+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Final Model")
   
 
-#Residual plot
+#Verifying model assumptions:
 
-ggplot(m_final,aes(m_final$fitted.values, m_final$residuals)) +
+#Residual plot
+gR=ggplot(m_final,aes(m_final$fitted.values, m_final$residuals)) +
   geom_point() +
   geom_hline(yintercept=0,color="gray")+
   theme(plot.title=element_text(hjust=0.5))+
@@ -229,7 +192,7 @@ ggplot(m_final,aes(m_final$fitted.values, m_final$residuals)) +
   labs(y="Residuals", x = "Fitted Values")
 
 #QQ plot
-ggplot(m_final, aes(sample = .stdresid))+ stat_qq() + stat_qq_line()+
+gQ=ggplot(m_final, aes(sample = .stdresid))+ stat_qq() + stat_qq_line()+
   theme(plot.title=element_text(hjust=0.5))+
   ggtitle("Normal Q-Q Plot")+
   labs(y="Sample Quantiles", x = "Theoretical Quantiles")
@@ -240,11 +203,14 @@ ggplot(m_final, aes(sample = .stdresid))+ stat_qq() + stat_qq_line()+
 #Data Frame to plot Residuals Time Series
 df.resid=data.frame(Index=1:nrow(wine),Residuals=m_final$residuals)
 
-ggplot(df.resid,aes(Index,Residuals))+geom_line()+
+gT=ggplot(df.resid,aes(Index,Residuals))+geom_line()+
   geom_hline(yintercept=0,color="gray",linetype="dashed")+
   theme(plot.title=element_text(hjust=0.5))+
   ggtitle("Residuals Time Series")
   
+print(ggarrange(gR, gQ, gT,
+                ncol = 3, nrow = 1))
+
 #Question 1.f
 
 #model Quality = Intercept +  Flavor + Region2 + Region3
@@ -286,18 +252,22 @@ adm.train=rbind(admission[k1,][-(1:5),],admission[k2,][-(1:5),],admission[k3,][-
 #Question 2.a
 
 g=ggplot(adm.train,aes(x=GPA,y=GMAT,color=Group))+geom_point()
-g_GPA=ggplot(adm.train,aes(Group,GPA,fill=Group))+geom_boxplot()
+g_GPA=ggplot(adm.train,aes(Group,GPA,fill=Group))+geom_boxplot()+
+  theme(legend.position = "none")
 g_GMAT=ggplot(adm.train,aes(Group,GMAT,fill=Group))+geom_boxplot()
-ggarrange(g+theme(legend.position = "none"),g_GPA, g_GMAT,
-          labels = c("GMAT vs GPA","Boxplot GPA", "Boxplot GMAT"),
-          ncol = 3, nrow = 1)
+
+print(ggarrange(g+theme(legend.position = "none"),g_GPA, g_GMAT,
+          labels = c("GMAT vs GPA","GPA by Groups", "GMAT by Groups"),
+          ncol = 3, nrow = 1))
 
 
 
 #Question 2.b
 
+#Performing lda
 mlda = lda(Group ~ GPA + GMAT, data = adm.train)
 
+#Representing the decision boundary over the training set
 #Creating grid 
 x1=seq(min(adm.train[,1]),max(adm.train[,1]),length.out=100)
 x2=seq(min(adm.train[,2]),max(adm.train[,2]),length.out=100)
@@ -308,7 +278,7 @@ names(grid)=names(adm.train)[1:2]
 grid.pred = predict(mlda, grid)
 
 prob = grid.pred$posterior
-prob12=pmax(prob[,1],prob[,2]) #we just need the maximum probabilities over 1 and 2 
+prob12=pmax(prob[,1],prob[,2]) #we just need the maximum probabilities over Group 1 and 2 
                                #since 3 can be obtain from the others
 
 #Data Frame to generate the surface for the contour
@@ -323,13 +293,17 @@ pred_train_lda=predict(mlda, adm.train)$class
 
 #lda Confusion Matrix for Training Set
 M1=table(pred_train_lda,adm.train$Group,dnn=c("predicted","actual"))
+print(M1)
 acc_train_lda=sum(diag(M1))/sum(M1)
+print(paste("Misclassifcation Rate:",1-acc_train_lda))
 
 
 pred_test_lda=predict(mlda, adm.test)$class
 #lda Confusion Matrix for Testing Set
 M2=table(pred_test_lda,adm.test$Group,dnn=c("predicted","actual"))
+print(M2)
 acc_test_lda=sum(diag(M2))/sum(M2)
+print(paste("Misclassifcation Rate:",1-acc_test_lda))
 
 
 #Question 2.c
@@ -339,8 +313,8 @@ mqda = qda(Group ~ GPA + GMAT, data = adm.train)
 grid.pred.qda = predict(mqda, grid)
 
 prob = grid.pred.qda$posterior
-prob12=pmax(prob[,1],prob[,2]) #we just need the probabilities of max of 1 and 2 
-#since 3 can be obtain from the others
+prob12=pmax(prob[,1],prob[,2]) #we just need the maximum probabilities over Group 1 and 2 
+                               #since 3 can be obtain from the others
 
 #Data Frame to generate the surface for the contour
 df_contour.qda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
@@ -353,13 +327,17 @@ print(g_qda)
 pred_train_qda=predict(mqda, adm.train)$class
 #qda Confusion Matrix for Training Set
 M3=table(pred_train_qda,adm.train$Group,dnn=c("predicted","actual"))
+print(M3)
 acc_train_qda=sum(diag(M3))/sum(M3)
+print(paste("Misclassifcation Rate:",1-acc_train_qda))
 
 
 pred_test_qda=predict(mqda, adm.test)$class
 #qda Confusion Matrix for Testing Set
 M4=table(pred_test_qda,adm.test$Group,dnn=c("predicted","actual"))
+print(M4)
 acc_test_qda=sum(diag(M4))/sum(M4)
+print(paste("Misclassifcation Rate:",1-acc_test_qda))
 
 
 #Question 2.d
