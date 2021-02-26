@@ -176,9 +176,9 @@ anova(m_final,m_final2)
 #We can appreciate the lines of our final model for each region.
 
 print(ggplot(m_final, aes(Flavor, Quality,color=Region)) +
-  geom_point()+geom_line(aes(y = .fitted),size=1, show.legend =F))+
+  geom_point()+geom_line(aes(y = .fitted),size=1, show.legend =F)+
   theme(plot.title=element_text(hjust=0.5))+
-  ggtitle("Final Model")
+  ggtitle("Final Model: Quality ~ Flavor + Region"))
   
 
 #Verifying model assumptions:
@@ -286,7 +286,10 @@ df_contour.lda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
 
 
 #Plotting the training set and decision boundary
-g_lda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,colour="purple",breaks = 0.5)
+g_lda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,
+                       colour="purple",breaks = 0.5)+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("LDA Decision Boundary")
 print(g_lda)
 
 pred_train_lda=predict(mlda, adm.train)$class
@@ -321,7 +324,10 @@ df_contour.qda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
 
 
 #Plotting the training set and decision boundary
-g_qda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,colour="gold1",breaks = 0.5)
+g_qda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,
+                       colour="gold1",breaks = 0.5)+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("QDA Decision Boundary")
 print(g_qda)
 
 pred_train_qda=predict(mqda, adm.train)$class
@@ -400,21 +406,33 @@ diabetes$Outcome=as.factor(diabetes$Outcome)
 
 #Question 3.a
 
-table(diabetes$Outcome)
+print(table(diabetes$Outcome) )
+#We can notice how the data is unbalanced for our classes
 
-g1=ggplot(diabetes,aes(Outcome,Pregnancies,fill=Outcome))+geom_boxplot()
-g2=ggplot(diabetes,aes(Outcome,Glucose,fill=Outcome))+geom_boxplot()
-g3=ggplot(diabetes,aes(Outcome,BloodPressure,fill=Outcome))+geom_boxplot()
-g4=ggplot(diabetes,aes(Outcome,SkinThickness,fill=Outcome))+geom_boxplot()
-ggarrange(g1, g2, g3, g4, ncol = 2, nrow = 2)
+#Visualizing Boxplots of several predictors
+g1=ggplot(diabetes,aes(Outcome,Pregnancies,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+g2=ggplot(diabetes,aes(Outcome,Glucose,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+g3=ggplot(diabetes,aes(Outcome,BloodPressure,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+g4=ggplot(diabetes,aes(Outcome,SkinThickness,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+print(ggarrange(g1, g2, g3, g4, ncol = 2, nrow = 2))
 
-g5=ggplot(diabetes,aes(Outcome,Insulin,fill=Outcome))+geom_boxplot()
-g6=ggplot(diabetes,aes(Outcome,BMI,fill=Outcome))+geom_boxplot()
-g7=ggplot(diabetes,aes(Outcome,DiabetesPedigreeFunction,fill=Outcome))+geom_boxplot()
-g8=ggplot(diabetes,aes(Outcome,Age,fill=Outcome))+geom_boxplot()
-ggarrange(g5, g6, g7, g8, ncol = 2, nrow = 2)
+g5=ggplot(diabetes,aes(Outcome,Insulin,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+g6=ggplot(diabetes,aes(Outcome,BMI,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+g7=ggplot(diabetes,aes(Outcome,DiabetesPedigreeFunction,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+g8=ggplot(diabetes,aes(Outcome,Age,fill=Outcome))+geom_boxplot()+
+  theme(legend.position = "none")
+print(ggarrange(g5, g6, g7, g8, ncol = 2, nrow = 2))
 
-ggplot(diabetes,aes(x=Glucose,y=Age,color=Outcome))+geom_point()
+#From the previous boxplots we consider Glucose and Age are important predictors
+print(ggplot(diabetes,aes(x=Glucose,y=Age,color=Outcome))+geom_point()+
+        theme(legend.position = "none"))
 
 
 
@@ -429,15 +447,17 @@ predicted_lda=predict(m_diabetes_lda,diabetes)
 
 CM1=confusionMatrix(predicted_lda$class, actual, positive="1")
 CM1$table
-1-CM1$overall[["Accuracy"]]
-CM1$byClass[["Sensitivity"]]
-CM1$byClass[["Specificity"]]
+# 1-CM1$overall[["Accuracy"]]
+# CM1$byClass[["Sensitivity"]]
+# CM1$byClass[["Specificity"]]
+
+
 
 roc.lda = roc(diabetes$Outcome, predicted_lda$posterior[, "1"], levels = c("0", "1"),direction="<")
 
-ggroc(roc.lda,color = "#F8766D"  ,legacy.axes = TRUE)+
+plot(ggroc(roc.lda,color = "#F8766D"  ,legacy.axes = TRUE)+
   geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="grey", linetype="dashed")+
-  ggtitle("Linear Discriminant Analysis")
+  ggtitle("Linear Discriminant Analysis"))
 
 #Question 3.c
 
@@ -447,9 +467,9 @@ predicted_qda=predict(m_diabetes_qda,diabetes)
 
 CM2=confusionMatrix(predicted_qda$class, actual, positive="1")
 CM2$table
-1-CM2$overall[["Accuracy"]]
-CM2$byClass[["Sensitivity"]]
-CM2$byClass[["Specificity"]]
+# 1-CM2$overall[["Accuracy"]]
+# CM2$byClass[["Sensitivity"]]
+# CM2$byClass[["Specificity"]]
 
 roc.qda = roc(diabetes$Outcome, predicted_qda$posterior[, "1"], levels = c("0", "1"),direction="<")
 
@@ -461,14 +481,14 @@ ggroc(roc.qda, color="#00BFC4",legacy.axes = TRUE)+
 
 
 ggroc(list(lda=roc.lda,qda=roc.qda),legacy.axes = TRUE)+
-  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="grey", linetype="dashed")+
-  annotate("text", x = 0.5, y = 0.83, vjust = 0, label = paste("AUC =",sprintf("%.4f",roc.lda$auc)),color="#F8766D")+
-  annotate("text", x = 0.5, y = 0.78, vjust = 0, label = paste("AUC =",sprintf("%.4f",roc.qda$auc)),color="#00BFC4")
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), 
+               color="grey", linetype="dashed")+
+  annotate("text", x = 0.5, y = 0.83, vjust = 0, 
+           label = paste("AUC =",sprintf("%.4f",roc.lda$auc)),color="#F8766D")+
+  annotate("text", x = 0.5, y = 0.78, vjust = 0, 
+           label = paste("AUC =",sprintf("%.4f",roc.qda$auc)),color="#00BFC4")
 
 
-
-roc.lda$auc
-roc.qda$auc
 
 cut.lda=coords(roc.lda,"best")
 cut.qda=coords(roc.qda,"best")
@@ -478,3 +498,12 @@ pred_newcutoff=ifelse(predicted_lda$posterior[,2]>=cut.lda[1,1],"1","0")
 pred_newcutoff=as.factor(pred_newcutoff)
 CM3=confusionMatrix(pred_newcutoff, actual, positive="1")
 CM3$table
+1-CM3$overall[["Accuracy"]]
+CM3$byClass[["Sensitivity"]]
+CM3$byClass[["Specificity"]]
+
+
+df.tab=data.frame("Error Rate" =c(1-CM1$overall[["Accuracy"]],1-CM2$overall[["Accuracy"]]), 
+                  "Sensitivity"=c(CM1$byClass[["Sensitivity"]],CM2$byClass[["Sensitivity"]]),
+                  "Specificity"=c(CM1$byClass[["Specificity"]],CM2$byClass[["Specificity"]]))
+row.names(df.tab)=c("LDA","QDA")
