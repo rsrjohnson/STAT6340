@@ -298,7 +298,7 @@ pred_train_lda=predict(mlda, adm.train)$class
 M1=table(pred_train_lda,adm.train$Group,dnn=c("predicted","actual"))
 print(M1)
 acc_train_lda=sum(diag(M1))/sum(M1)
-print(paste("Misclassifcation Rate:",1-acc_train_lda))
+print(paste("Misclassifcation Rate Training LDA:",1-acc_train_lda))
 
 
 pred_test_lda=predict(mlda, adm.test)$class
@@ -306,7 +306,7 @@ pred_test_lda=predict(mlda, adm.test)$class
 M2=table(pred_test_lda,adm.test$Group,dnn=c("predicted","actual"))
 print(M2)
 acc_test_lda=sum(diag(M2))/sum(M2)
-print(paste("Misclassifcation Rate:",1-acc_test_lda))
+print(paste("Misclassifcation Rate Test LDA:",1-acc_test_lda))
 
 
 #Question 2.c
@@ -335,7 +335,7 @@ pred_train_qda=predict(mqda, adm.train)$class
 M3=table(pred_train_qda,adm.train$Group,dnn=c("predicted","actual"))
 print(M3)
 acc_train_qda=sum(diag(M3))/sum(M3)
-print(paste("Misclassifcation Rate:",1-acc_train_qda))
+print(paste("Misclassifcation Rate Training QDA:",1-acc_train_qda))
 
 
 pred_test_qda=predict(mqda, adm.test)$class
@@ -343,7 +343,7 @@ pred_test_qda=predict(mqda, adm.test)$class
 M4=table(pred_test_qda,adm.test$Group,dnn=c("predicted","actual"))
 print(M4)
 acc_test_qda=sum(diag(M4))/sum(M4)
-print(paste("Misclassifcation Rate:",1-acc_test_qda))
+print(paste("Misclassifcation Rate Testing LDA:",1-acc_test_qda))
 
 
 #Question 2.d
@@ -455,9 +455,10 @@ CM1$table
 
 roc.lda = roc(diabetes$Outcome, predicted_lda$posterior[, "1"], levels = c("0", "1"),direction="<")
 
-plot(ggroc(roc.lda,color = "#F8766D"  ,legacy.axes = TRUE)+
-  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="grey", linetype="dashed")+
-  ggtitle("Linear Discriminant Analysis"))
+print(ggroc(roc.lda,color = "#F8766D"  ,legacy.axes = TRUE)+
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="black", linetype="dashed")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle(paste("Linear Discriminant Analysis AUC:",round(roc.lda$auc,4))))
 
 #Question 3.c
 
@@ -473,25 +474,22 @@ CM2$table
 
 roc.qda = roc(diabetes$Outcome, predicted_qda$posterior[, "1"], levels = c("0", "1"),direction="<")
 
-ggroc(roc.qda, color="#00BFC4",legacy.axes = TRUE)+
-  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="grey", linetype="dashed")+
-  ggtitle("Quadratic Discriminant Analysis")
+print(ggroc(roc.qda, color="#00BFC4",legacy.axes = TRUE)+
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), color="black", linetype="dashed")+
+    theme(plot.title=element_text(hjust=0.5))+
+    ggtitle(paste("Quadratic Discriminant Analysis AUC:",round(roc.qda$auc,4))))
+
+
+df.tab=data.frame("Error Rate" =c(1-CM1$overall[["Accuracy"]],1-CM2$overall[["Accuracy"]]), 
+                  "Sensitivity"=c(CM1$byClass[["Sensitivity"]],CM2$byClass[["Sensitivity"]]),
+                  "Specificity"=c(CM1$byClass[["Specificity"]],CM2$byClass[["Specificity"]]))
+row.names(df.tab)=c("LDA","QDA")
+
+print(df.tab)
 
 #Question 3.d
 
-
-ggroc(list(lda=roc.lda,qda=roc.qda),legacy.axes = TRUE)+
-  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), 
-               color="grey", linetype="dashed")+
-  annotate("text", x = 0.5, y = 0.83, vjust = 0, 
-           label = paste("AUC =",sprintf("%.4f",roc.lda$auc)),color="#F8766D")+
-  annotate("text", x = 0.5, y = 0.78, vjust = 0, 
-           label = paste("AUC =",sprintf("%.4f",roc.qda$auc)),color="#00BFC4")
-
-
-
-cut.lda=coords(roc.lda,"best")
-cut.qda=coords(roc.qda,"best")
+cut.lda=coords(roc.lda,"best") #best cutoff determine by Youden's Index
 
 
 pred_newcutoff=ifelse(predicted_lda$posterior[,2]>=cut.lda[1,1],"1","0")
@@ -503,7 +501,4 @@ CM3$byClass[["Sensitivity"]]
 CM3$byClass[["Specificity"]]
 
 
-df.tab=data.frame("Error Rate" =c(1-CM1$overall[["Accuracy"]],1-CM2$overall[["Accuracy"]]), 
-                  "Sensitivity"=c(CM1$byClass[["Sensitivity"]],CM2$byClass[["Sensitivity"]]),
-                  "Specificity"=c(CM1$byClass[["Specificity"]],CM2$byClass[["Specificity"]]))
-row.names(df.tab)=c("LDA","QDA")
+
