@@ -275,22 +275,27 @@ grid = expand.grid(x=x1, y=x2)
 
 #Classifying the grid
 names(grid)=names(adm.train)[1:2]
-grid.pred = predict(mlda, grid)
+grid.pred.lda = predict(mlda, grid)
 
-prob = grid.pred$posterior
+prob = grid.pred.lda$posterior
 prob12=pmax(prob[,1],prob[,2]) #we just need the maximum probabilities over Group 1 and 2 
                                #since 3 can be obtain from the others
 
 #Data Frame to generate the surface for the contour
 df_contour.lda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
 
+grid$Group=grid.pred.lda$class
 
 #Plotting the training set and decision boundary
-g_lda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,
-                       colour="purple",breaks = 0.5)+
-  theme(plot.title=element_text(hjust=0.5))+
+glda=ggplot(adm.train,aes(x=GPA,y=GMAT,color=Group))+
+  geom_point(aes(x=GPA, y=GMAT, color=Group), size=3, shape=1)+
+  geom_contour(aes(x=x,y=y,z=z), data=df_contour.lda,size=1,
+               color="purple",breaks = 0.5)+
+  geom_point(aes(x=GPA, y=GMAT, color=Group),data=grid,alpha=0.5,size=0.5)+
+  theme_bw()+theme(plot.title=element_text(hjust=0.5))+
   ggtitle("LDA Decision Boundary")
-print(g_lda)
+print(glda)
+
 
 pred_train_lda=predict(mlda, adm.train)$class
 
@@ -323,12 +328,17 @@ prob12=pmax(prob[,1],prob[,2]) #we just need the maximum probabilities over Grou
 df_contour.qda=data.frame(x=grid[,1],y=grid[,2],z=prob12)
 
 
+grid$Group=grid.pred.qda$class
+
 #Plotting the training set and decision boundary
-g_qda=g + geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,
-                       colour="gold1",breaks = 0.5)+
-  theme(plot.title=element_text(hjust=0.5))+
+gqda=ggplot(adm.train,aes(x=GPA,y=GMAT,color=Group))+
+  geom_point(aes(x=GPA, y=GMAT, color=Group), size=3, shape=1)+
+  geom_contour(aes(x=x,y=y,z=z), data=df_contour.qda,size=1,
+               color="gold1",breaks = 0.5)+
+  geom_point(aes(x=GPA, y=GMAT, color=Group),data=grid,alpha=0.5,size=0.5)+ 
+  theme_bw()+theme(plot.title=element_text(hjust=0.5))+
   ggtitle("QDA Decision Boundary")
-print(g_qda)
+print(gqda)
 
 pred_train_qda=predict(mqda, adm.train)$class
 #qda Confusion Matrix for Training Set
