@@ -218,3 +218,60 @@ error.df["KNN","Error"]=knn_loocv_error
 #Experiment 3
 print("Experiment 3")
 
+oxygen_saturation = read.delim("oxygen_saturation.txt")
+
+####Question 3.a####
+gox=ggplot(oxygen_saturation,aes(x=pos,y=osm))+geom_point(color='turquoise3')+
+  geom_abline(slope=1,intercept = 0,color='salmon',size=1,alpha=0.7)
+
+print(gox)
+
+####Question 3.b####
+
+D=oxygen_saturation[,1]-oxygen_saturation[,2]
+
+abs_D=abs(D)
+
+####Question 3.c####
+
+theta=quantile(abs_D,0.9)[[1]]
+
+####Question 3.d####
+
+#Number of bootstrap samples
+nb=1000
+
+
+#Generating Bootstrap Samples
+set.seed(rdseed)
+boot_sample=replicate(nb, sample(abs_D, replace=TRUE))
+
+#Finding Bootstrap Estimates
+boot_estimates=sapply(boot_sample, function(x){quantile(x,0.9)[[1]]})
+
+#bias estimate  
+mean(boot_estimates)-theta
+
+#std error
+sd(boot_estimates)
+
+#95% upper confidence bound
+sort(boot_estimates)[ceiling(.95*nb)]
+
+
+####Question 3.e####
+
+quantile.fn=function(x,indices)
+{
+  quantile(x[indices],0.9)[[1]]
+}
+
+
+set.seed(rdseed)
+theta.boot=boot(abs_D,quantile.fn,nb)
+
+#95% upper confidence bound
+boot.ci(theta.boot,conf=0.90,type = "perc")$percent[5]
+
+sort(theta.boot$t)[ceiling(.95*nb)]
+
