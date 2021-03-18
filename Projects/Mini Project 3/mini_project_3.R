@@ -1,5 +1,6 @@
 #Packages
-library(ggplot2) #Used for graphics and visual representations
+library(ggplot2) #Used for graphics and visual representations, ggplots will be under plot tab
+library(plotly) #Used for 3D graphics, plotly graphics will be under viewer tab
 library(ggpubr) #Used for graphics handling
 
 
@@ -239,7 +240,7 @@ set.seed(rdseed)
 #knn_loocv = train(Outcome ~ ., data=diabetes, method = "knn",trControl = control,tuneLength=1:10)
 #knn_loocv = train(Outcome ~ ., data=diabetes, method = "knn",trControl = control,tuneGrid=data.frame(k=1:10))
 knn_loocv = train(
-  Outcome ~ .,
+  form = Outcome ~ .,
   data=diabetes,
   trControl = control,
   method = "knn",
@@ -260,26 +261,38 @@ print("Experiment 3")
 oxygen_saturation = read.delim("oxygen_saturation.txt")
 
 ####Question 3.a####
+
+#Scatterplot
 gox=ggplot(oxygen_saturation,aes(x=pos,y=osm))+geom_point(color='black')+
   geom_abline(slope=1,intercept = 0,color='salmon',size=1,alpha=0.7)
 
 print(gox)
 
+D=oxygen_saturation[,1]-oxygen_saturation[,2]
+abs_D=abs(D) #Absolute Differences
+
+#Boxplot of Absolute Differences
+gbox=ggplot()+geom_boxplot(fill='cyan', color="black",aes(y=abs_D))+
+  ggtitle("Absolute Differences")+theme(plot.title=element_text(hjust=0.5))+
+  theme(axis.title.y=element_blank(),axis.title.x=element_blank(),
+      axis.text.x=element_blank(),
+      axis.ticks.x=element_blank())
+
+print(gbox)
+
 ####Question 3.b####
 
-D=oxygen_saturation[,1]-oxygen_saturation[,2]
-
-abs_D=abs(D)
+#Answered on report.
 
 ####Question 3.c####
 
+#Natural estimate is the 90% quantile
 theta=quantile(abs_D,0.9)[[1]]
 
 ####Question 3.d####
 
 #Number of bootstrap samples
 nb=1000
-
 
 #Generating Bootstrap Samples
 set.seed(rdseed)
