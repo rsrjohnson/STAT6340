@@ -11,7 +11,7 @@ library(boot) #Used for bootstrapping
 
 library(e1071) #Used for tuning knn
 
-rdseed=8467 #Seed to replicate results in case of a tie on LDA or QDA
+rdseed=8467 #Seed to replicate results
 
 #Experiment 1
 print("Experiment 1")
@@ -69,9 +69,9 @@ print(ggplot(diabetes,aes(x=Glucose,y=BMI,color=Outcome))+geom_point()+
         theme(legend.position = "none"))
 
 #3D graph
-fig = plot_ly(diabetes, x = ~Glucose, y = ~Pregnancies, z = ~BMI, color = ~Outcome, colors = c('Salmon', 'Turquoise3'))
-fig = fig %>% add_markers(size=0.5)
-fig = fig %>% layout(scene = list(xaxis = list(title = 'Glucose'),
+fig = plot_ly(diabetes, x = ~Glucose, y = ~Pregnancies, z = ~BMI,
+              color = ~Outcome, colors = c('Salmon', 'Turquoise3'))%>%
+  add_markers(size=0.5) %>% layout(scene = list(xaxis = list(title = 'Glucose'),
                                    yaxis = list(title = 'Pregnancies'),
                                    zaxis = list(title = 'BMI')))
 
@@ -296,7 +296,7 @@ nb=1000
 
 #Generating Bootstrap Samples
 set.seed(rdseed)
-boot_sample=replicate(nb, sample(abs_D, replace=TRUE))
+boot_sample=replicate(nb, sample(abs_D, replace=TRUE),simplify = FALSE)
 
 #Finding Bootstrap Estimates
 boot_estimates=sapply(boot_sample, function(x){quantile(x,0.9)[[1]]})
@@ -313,6 +313,7 @@ sort(boot_estimates)[ceiling(.95*nb)]
 
 ####Question 3.e####
 
+#Auxiliar function to be used with the boot package
 quantile.fn=function(x,indices)
 {
   quantile(x[indices],0.9)[[1]]
@@ -321,6 +322,7 @@ quantile.fn=function(x,indices)
 
 set.seed(rdseed)
 theta.boot=boot(abs_D,quantile.fn,nb)
+print(theta.boot)
 
 #95% upper confidence bound
 boot.ci(theta.boot,conf=0.90,type = "perc")$percent[5]
