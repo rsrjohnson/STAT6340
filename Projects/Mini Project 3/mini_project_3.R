@@ -1,12 +1,13 @@
 #Packages
-library(ggplot2) #Used for graphics and visual representations, ggplots will be under plot tab
-library(plotly) #Used for 3D graphics, plotly graphics will be under viewer tab
+library(ggplot2) #Used for graphics and visual representations, 
+                 #ggplots will be graph under the plot tab in rstudio
+library(plotly) #Used for 3D graphics,
+                #plotly graphics will be under the viewer tab in rstudio
 library(ggpubr) #Used for graphics handling
 
 
 library(MASS) #Used for LD and QD analysis
-library(pROC) #Used to obtain ROC curve and find cutoff
-library(caret) #Used to obtain Confusion matrix, classification metrics, train controls for CV and LOOCV
+library(caret) #Used to handle LOOCV training
 library(boot) #Used for bootstrapping
 
 library(e1071) #Used for tuning knn
@@ -14,7 +15,6 @@ library(e1071) #Used for tuning knn
 rdseed=8467 #Seed to replicate results
 
 #Experiment 1
-print("Experiment 1")
 
 #Reading the data
 diabetes = read.csv("diabetes.csv")
@@ -32,7 +32,7 @@ diabetes$Outcome=as.factor(diabetes$Outcome)
 ####Question 1.a####
 
 #Exploring data
-print(table(diabetes$Outcome) )
+table(diabetes$Outcome)
 #We can notice how the data is unbalanced for our classes
 
 #Visualizing Boxplots of several predictors
@@ -69,13 +69,13 @@ print(ggplot(diabetes,aes(x=Glucose,y=BMI,color=Outcome))+geom_point()+
         theme(legend.position = "none"))
 
 #3D graph
-fig = plot_ly(diabetes, x = ~Glucose, y = ~Pregnancies, z = ~BMI,
+plotly3 = plot_ly(diabetes, x = ~Glucose, y = ~Pregnancies, z = ~BMI,
               color = ~Outcome, colors = c('Salmon', 'Turquoise3'))%>%
   add_markers(size=0.5) %>% layout(scene = list(xaxis = list(title = 'Glucose'),
                                    yaxis = list(title = 'Pregnancies'),
                                    zaxis = list(title = 'BMI')))
 
-print(fig)
+print(plotly3)
 
 #Storing true classes
 actual=diabetes$Outcome
@@ -102,9 +102,6 @@ anova(m1, m_Full, test = "Chisq")
 anova(m0, m1, test = "Chisq")
 
 
-#m_Final=glm(Outcome~Pregnancies + Glucose + BloodPressure + Insulin + BMI + DiabetesPedigreeFunction + Age,data=diabetes,family = binomial)
-#m_aic=step(m_Full)
-
 ####Question 1.c####
 
 #Summary of final model
@@ -122,18 +119,16 @@ ci95=confint(m1)
 odd_ratio=exp(m1$coefficients)
 
 #Putting all together
-
 cbind(Odd_Ratio=odd_ratio,ci95)
 
 #Predicted Classes
 class.predict=ifelse(m1$fitted.values >= 0.5, 1, 0)
 
 #Classification error rate
-class_error_rate=mean(class.predict!=actual)
+mean(class.predict!=actual)
 
 
 #Experiment 2
-print("Experiment 2")
 
 ####Question 2.a####
 
@@ -141,23 +136,27 @@ m_Full=glm(Outcome~.,data=diabetes,family = binomial)
 lr.prob = m_Full$fitted.values
 lr.class = ifelse(lr.prob >= 0.5, 1, 0)
 
-# CM=confusionMatrix(lr.class, actual, positive="1")
-# print(CM$table)
-
+#Confusion Matrix
 CM=table(lr.class, actual,dnn=c("predicted","actual"))
+print(CM)
 
+#Finding accuracy
 acc_train=sum(diag(CM))/sum(CM)
-print(paste("Misclassifcation Error Rate:",1-acc_train))
+#Finding error
+paste("Misclassifcation Error Rate Experiment 1 model:",1-acc_train)
 
-sens=CM[2,2]/sum(CM[,2])
+#Finding sensitivity
+CM[2,2]/sum(CM[,2])
   
-spec=CM[1,1]/sum(CM[,1])
+#Finding especificity
+CM[1,1]/sum(CM[,1])
 
 ####Question 2.b####
 
-n=nrow(diabetes)
+n=nrow(diabetes) #number of observations
 
-error_LOOCV=sapply(1:n,function(i){
+#Applying LOOCV on a full model for logistic regression
+class_LOOCV=sapply(1:n,function(i){
   
   m_i=glm(Outcome~.,data=diabetes[-i,],family = binomial)
   
@@ -167,7 +166,8 @@ error_LOOCV=sapply(1:n,function(i){
   
 })
 
-mean_error_LOOCV=mean(error_LOOCV)
+#Estimated test error rate
+mean(class_LOOCV)
 
 ####Question 2.c####
 
@@ -176,9 +176,11 @@ error.df=data.frame(Error=rep(0,4))
 row.names(error.df)=c("LR","LDA","QDA","KNN")
 
 
-#Defining the training control for the models
-control=trainControl(method = "LOOCV", number = 1)
+#Defining the training control for the train method of caret 
+control=trainControl(method = "LOOCV",seeds = rep(rdseed,n+1), number = 1)
 
+
+#LOOCV on full model of logistic regression
 mloocv = train(
   form = Outcome ~ .,
   data = diabetes,
@@ -187,16 +189,14 @@ mloocv = train(
   family = "binomial"
 )
 
+#Estimated test error rate, subtracting accuracy
 mloocv_error=(1-mloocv$results[1,2])
-
+print(mloocv_error)
 error.df["LR","Error"]=mloocv_error
-
-costfunc <- function(r, pi = 0) mean(abs(r-pi) >= 0.5)
-cv.err <- cv.glm(diabetes,m_Full,cost=costfunc)$delta[1]
-
 
 ####Question 2.d####
 
+#LOOCV on logistic regression model from experiment 1
 m1_loocv = train(
   form = Outcome ~ .-SkinThickness,
   data = diabetes,
@@ -205,12 +205,14 @@ m1_loocv = train(
   family = "binomial"
 )
 
+#Estimated test error rate, subtracting accuracy
 m1error_loocv=(1-m1_loocv$results[1,2])
+print(m1error_loocv)
 
-#error.df["LR","Error"]=m1error_loocv
 
 ####Question 2.e####
 
+#LOOCV on full model of LDA
 lda_loocv = train(
   form = Outcome ~ .,
   data = diabetes,
@@ -218,12 +220,14 @@ lda_loocv = train(
   method = "lda"
 )
 
+#Estimated test error rate, subtracting accuracy
 lda_error=(1-lda_loocv$results[1,2])
-
+print(lda_error)
 error.df["LDA","Error"]=lda_error
 
 ####Question 2.f####
 
+#LOOCV on full model of QDA
 qda_loocv = train(
   form = Outcome ~ .,
   data = diabetes,
@@ -231,38 +235,45 @@ qda_loocv = train(
   method = "qda"
 )
 
+#Estimated test error rate, subtracting accuracy
 qda_error=(1-qda_loocv$results[1,2])
-
+print(qda_error)
 error.df["QDA","Error"]=qda_error
 
 ####Question 2.g####
+
+#Finding optimal k between 5-40 neighbors 
 set.seed(rdseed)
-#knn_loocv = train(Outcome ~ ., data=diabetes, method = "knn",trControl = control,tuneLength=1:10)
-#knn_loocv = train(Outcome ~ ., data=diabetes, method = "knn",trControl = control,tuneGrid=data.frame(k=1:10))
+knntunned=tune.knn(diabetes[,-9], diabetes$Outcome,k = 5:40, tunecontrol = tune.control(cross=n))
+
+opt_k=knntunned$best.parameters[[1]] #optimal K = 6
+
+
 knn_loocv = train(
   form = Outcome ~ .,
   data=diabetes,
   trControl = control,
   method = "knn",
-  tuneGrid=data.frame(k=1))
+  tuneGrid=data.frame(k=opt_k)
+  )
 
-knn_loocv_error=(1-knn_loocv$results[1,2])
+#Estimated test error rate, subtracting accuracy
+knn_loocv_error=(1-knn_loocv$results[[1,2]])
+print(knn_loocv_error)
 error.df["KNN","Error"]=knn_loocv_error
 
-knntunned=tune.knn(diabetes[,-9], diabetes$Outcome,k = 1:40, tunecontrol = tune.control(cross=n))
 
 ####Question 2.h####
-print(error.df)#comparison of all classification techniques
+error.df#comparison of all classification techniques
 
 
 #Experiment 3
-print("Experiment 3")
 
 oxygen_saturation = read.delim("oxygen_saturation.txt")
 
 ####Question 3.a####
 
-#Scatterplot
+#Scatterplot OSM vs POS
 gox=ggplot(oxygen_saturation,aes(x=pos,y=osm))+geom_point(color='black')+
   geom_abline(slope=1,intercept = 0,color='salmon',size=1,alpha=0.7)
 
@@ -287,7 +298,8 @@ print(gbox)
 ####Question 3.c####
 
 #Natural estimate is the 90% quantile
-theta=quantile(abs_D,0.9)[[1]]
+theta_hat=quantile(abs_D,0.9)[[1]]
+print(theta_hat)
 
 ####Question 3.d####
 
@@ -302,7 +314,7 @@ boot_sample=replicate(nb, sample(abs_D, replace=TRUE),simplify = FALSE)
 boot_estimates=sapply(boot_sample, function(x){quantile(x,0.9)[[1]]})
 
 #bias estimate  
-mean(boot_estimates)-theta
+mean(boot_estimates)-theta_hat
 
 #std error
 sd(boot_estimates)
@@ -313,19 +325,17 @@ sort(boot_estimates)[ceiling(.95*nb)]
 
 ####Question 3.e####
 
-#Auxiliar function to be used with the boot package
+#Auxiliary function to be used with the boot package
 quantile.fn=function(x,indices)
 {
   quantile(x[indices],0.9)[[1]]
 }
 
-
+#Generating bootstrap estimates
 set.seed(rdseed)
 theta.boot=boot(abs_D,quantile.fn,nb)
 print(theta.boot)
 
 #95% upper confidence bound
-boot.ci(theta.boot,conf=0.90,type = "perc")$percent[5]
-
 sort(theta.boot$t)[ceiling(.95*nb)]
 
