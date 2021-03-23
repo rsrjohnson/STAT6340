@@ -4,8 +4,6 @@ library(ggplot2) #Used for graphics and visual representations,
 library(plotly) #Used for 3D graphics,
                 #plotly graphics will be under the viewer tab in rstudio
 library(ggpubr) #Used for graphics handling
-
-
 library(MASS) #Used for LD and QD analysis
 library(caret) #Used to handle LOOCV training
 library(boot) #Used for bootstrapping
@@ -15,6 +13,7 @@ library(e1071) #Used for tuning knn
 rdseed=8467 #Seed to replicate results
 
 #Experiment 1
+print("Experiment 1")
 
 #Reading the data
 diabetes = read.csv("diabetes.csv")
@@ -27,12 +26,10 @@ names(diabetes)=c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
 #Converting Outcome to factor
 diabetes$Outcome=as.factor(diabetes$Outcome)
 
-#contrasts(diabetes$Outcome)
-
 ####Question 1.a####
 
 #Exploring data
-table(diabetes$Outcome)
+print(table(diabetes$Outcome))
 #We can notice how the data is unbalanced for our classes
 
 #Visualizing Boxplots of several predictors
@@ -60,47 +57,44 @@ print(ggarrange(g_5+theme(axis.title.x = element_blank()),
                 g_6+theme(axis.title.x = element_blank()),
                 g_7, g_8, ncol = 2, nrow = 2))
 
-#From the previous boxplots we consider Glucose, Pregnancies and BMI are good candidates
-#predictors for our model
+
+#From the previous boxplots we consider Glucose, Pregnancies and Age are good 
+#candidates predictors for our model
 print(ggplot(diabetes,aes(x=Glucose,y=Pregnancies,color=Outcome))+geom_point()+
         theme(legend.position = "none"))
 
-print(ggplot(diabetes,aes(x=Glucose,y=BMI,color=Outcome))+geom_point()+
+print(ggplot(diabetes,aes(x=Glucose,y=Age,color=Outcome))+geom_point()+
         theme(legend.position = "none"))
 
 #3D graph
-plotly3 = plot_ly(diabetes, x = ~Glucose, y = ~Pregnancies, z = ~BMI,
+plotly3 = plot_ly(diabetes, x = ~Glucose, y = ~Pregnancies, z = ~Age,
               color = ~Outcome, colors = c('Salmon', 'Turquoise3'))%>%
   add_markers(size=0.5) %>% layout(scene = list(xaxis = list(title = 'Glucose'),
                                    yaxis = list(title = 'Pregnancies'),
-                                   zaxis = list(title = 'BMI')))
-
+                                   zaxis = list(title = 'Age')))
 print(plotly3)
 
 #Storing true classes
 actual=diabetes$Outcome
 
-
-
 ####Question 1.b####
 
 #Fitting the full model
 m_Full=glm(Outcome~.,data=diabetes,family = binomial)
-summary(m_Full)
+print(summary(m_Full))
 
 #Null model
 m0=glm(Outcome~1,data=diabetes,family = binomial)
 
 #Dropping one predictor at a time
 m1=glm(Outcome~.-SkinThickness,data=diabetes,family=binomial) #dropping SkinThickness
-summary(m1)
+print(summary(m1))
 
 #Analysis of Deviance with the full model
-anova(m1, m_Full, test = "Chisq")
+print(anova(m1, m_Full, test = "Chisq"))
 
 #Analysis of Deviance with the null model
-anova(m0, m1, test = "Chisq")
-
+print(anova(m0, m1, test = "Chisq"))
 
 ####Question 1.c####
 
@@ -111,7 +105,6 @@ summary(m1)
 #x^t*beta=-8.0273146 + 0.1263707*Pregnancies + 0.0336810*Glucose -0.0095806*BloodPressure
 #         -0.0012123*Insulin + 0.0778743*BMI + 0.8894946*DiabetesPedigreeFunction + 0.0128944*Age
 
-
 #95% confidence interval of coefficients
 ci95=confint(m1)
 
@@ -119,16 +112,17 @@ ci95=confint(m1)
 odd_ratio=exp(m1$coefficients)
 
 #Putting all together
-cbind(Odd_Ratio=odd_ratio,ci95)
+print(cbind(Odd_Ratio=odd_ratio,ci95))
 
 #Predicted Classes
 class.predict=ifelse(m1$fitted.values >= 0.5, 1, 0)
 
 #Classification error rate
-mean(class.predict!=actual)
+print(mean(class.predict!=actual))
 
 
 #Experiment 2
+print("Experiment 2")
 
 ####Question 2.a####
 
@@ -143,13 +137,13 @@ print(CM)
 #Finding accuracy
 acc_train=sum(diag(CM))/sum(CM)
 #Finding error
-paste("Misclassifcation Error Rate Experiment 1 model:",1-acc_train)
+print(paste("Misclassifcation Error Rate Experiment 1 model:",1-acc_train))
 
 #Finding sensitivity
-CM[2,2]/sum(CM[,2])
+print(paste("Sensitivity:",CM[2,2]/sum(CM[,2])))
   
 #Finding especificity
-CM[1,1]/sum(CM[,1])
+print(paste("Especificity",CM[1,1]/sum(CM[,1])))
 
 ####Question 2.b####
 
@@ -160,14 +154,15 @@ class_LOOCV=sapply(1:n,function(i){
   
   m_i=glm(Outcome~.,data=diabetes[-i,],family = binomial)
   
-  lr_i_class=as.factor(ifelse(predict(m_i,diabetes[i,],type = "response") >= 0.5, 1, 0))
+  lr_i_class=as.factor(ifelse(predict(m_i,diabetes[i,],
+                                      type = "response") >= 0.5, 1, 0))
   
   (lr_i_class != diabetes$Outcome[i])
   
 })
 
 #Estimated test error rate
-mean(class_LOOCV)
+print(mean(class_LOOCV))
 
 ####Question 2.c####
 
@@ -244,9 +239,12 @@ error.df["QDA","Error"]=qda_error
 
 #Finding optimal k between 5-40 neighbors 
 set.seed(rdseed)
-knntunned=tune.knn(diabetes[,-9], diabetes$Outcome,k = 5:40, tunecontrol = tune.control(cross=n))
+knntunned=tune.knn(diabetes[,-9], diabetes$Outcome,k = 1:40, 
+                   tunecontrol = tune.control(cross=n))
 
-opt_k=knntunned$best.parameters[[1]] #optimal K = 6
+opt_k=knntunned$best.parameters[[1]] #optimal K = 1
+
+
 
 
 knn_loocv = train(
@@ -264,10 +262,11 @@ error.df["KNN","Error"]=knn_loocv_error
 
 
 ####Question 2.h####
-error.df#comparison of all classification techniques
+print(error.df)#comparison of all classification techniques
 
 
 #Experiment 3
+print("Experiment 3")
 
 oxygen_saturation = read.delim("oxygen_saturation.txt")
 
@@ -314,13 +313,13 @@ boot_sample=replicate(nb, sample(abs_D, replace=TRUE),simplify = FALSE)
 boot_estimates=sapply(boot_sample, function(x){quantile(x,0.9)[[1]]})
 
 #bias estimate  
-mean(boot_estimates)-theta_hat
+print(paste("Bias estimate:",mean(boot_estimates)-theta_hat))
 
 #std error
-sd(boot_estimates)
+print(paste("Std error estimate:",sd(boot_estimates)))
 
 #95% upper confidence bound
-sort(boot_estimates)[ceiling(.95*nb)]
+print(paste("95% upper bound:",sort(boot_estimates)[ceiling(.95*nb)]))
 
 
 ####Question 3.e####
@@ -337,5 +336,5 @@ theta.boot=boot(abs_D,quantile.fn,nb)
 print(theta.boot)
 
 #95% upper confidence bound
-sort(theta.boot$t)[ceiling(.95*nb)]
+print(paste("95% upper bound:",sort(theta.boot$t)[ceiling(.95*nb)]))
 
