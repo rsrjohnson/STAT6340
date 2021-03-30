@@ -6,10 +6,11 @@ library(MASS) #Used for LD and QD analysis
 library(caret) #Used to handle LOOCV training
 library(boot) #Used for bootstrapping
 
-library(leaps)
-library(glmnet)
+library(leaps) #Used for best-subset selection and 
 library(bestglm)
-
+library(glmnet)
+library(tidyverse)
+library(broom) #To create tidy objects for ggplot visualization
 
 rdseed=8466 #Seed to replicate results
 
@@ -22,11 +23,11 @@ wine=read.delim("wine.txt")
 #Converting Region to factor
 wine$Region=as.factor(wine$Region)
 
-#Error Dataframe to track errors of each model
+#Dataframe to track errors of each model
 error.df=data.frame(MSE=rep(0,6))
 row.names(error.df)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
 
-#Data frame to track coefficients estimates
+#Dataframe to track coefficients estimates
 df.coeff.estimates=as.data.frame(matrix(NA,nrow=6,ncol = 8))
 
 #Defining the training control for the train method of caret 
@@ -36,7 +37,6 @@ control=trainControl(method = "LOOCV")
 n=nrow(wine)
 
 ####Question 1.a####
-
 
 #LOOCV on full regression model
 m_fullloocv = train(Quality ~ .,
@@ -49,33 +49,38 @@ print(m_fullloocv)
 #Estimated MSE
 error.df["Full","MSE"]=m_fullloocv$results$RMSE^2
 
-mfull=lm(Quality~.,data=wine)
-
 #Estimated coefficients
+mfull=lm(Quality~.,data=wine)
 coeff.full=mfull$coefficients
+
 names(df.coeff.estimates)=names(coeff.full)
 df.coeff.estimates[1,]=coeff.full
 
 
 ####Question 1.b####
 
-#total predictors
+#Total predictors
 totpred=ncol(wine)-1
 
-#finding best-subset selection models
+#Finding best-subset selection models
 m.subset=regsubsets(Quality ~ ., wine, nvmax = totpred)
 m.subset.summ=summary(m.subset)
 
-#best model according to adjusted r2
+#Best model according to adjusted r2
 kbest=which.max(m.subset.summ$adjr2)
 
-plot(m.subset.summ$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", 
-     type = "l")
-points(kbest, m.subset.summ$adjr2[kbest], col = "red", cex = 2, pch = 20)
+#Visualizing adj r2 vs number of predictors
+ggplot(data.frame(predictors = 1:totpred, adj_R2 = m.subset.summ$adjr2),
+       aes(x=predictors,y=adj_R2))+geom_line(size=1)+
+  geom_point(aes(x=kbest,y=m.subset.summ$adjr2[kbest]),
+             color="red",size=4,shape=20)+
+  labs(x="Number of Variables",y="Adjusted RSq")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Best Subset Selection Adjusted RSq")
 
-
+#Exploring the coefficients of the best model
 selected_predictors=coef(m.subset, kbest)
-print(selected_predictors)
+print(selected_predictors) #Clarity, Aroma and Body were dropped
 
 #LOOCV of the best model
 msub_LOOCV= train(Quality ~. -Clarity -Aroma -Body,
@@ -88,6 +93,7 @@ print(msub_LOOCV)
 #Estimated MSE
 error.df["Subset","MSE"]=msub_LOOCV$results$RMSE^2
 
+#Final model
 m.subset=lm(Quality ~. -Clarity -Aroma -Body,data=wine)
 #Estimated coefficients
 coeff.subset=m.subset$coefficients
@@ -97,31 +103,29 @@ df.coeff.estimates[2,-(2:4)]=coeff.subset
 
 ####Question 1.c####
 
-#finding forward selection models
+#Finding forward selection models
 m.forward=regsubsets(Quality ~ ., wine, nvmax = totpred,method="forward")
 m.forward.summ=summary(m.forward)
 
-#best model according to adjusted r2
+#Best model according to adjusted r2
 k.forward=which.max(m.forward.summ$adjr2)
 
-plot(m.forward.summ$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", 
-     type = "l")
-points(k.forward, m.forward.summ$adjr2[k.forward], col = "red", cex = 2, pch = 20)
+#Visualizing adj r2 vs number of predictors
+ggplot(data.frame(predictors = 1:totpred, adj_R2 = m.forward.summ$adjr2),
+       aes(x=predictors,y=adj_R2))+geom_line(size=1)+
+  geom_point(aes(x=k.forward,y=m.forward.summ$adjr2[k.forward]),
+             color="red",size=4,shape=20)+
+  labs(x="Number of Variables",y="Adjusted RSq")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Forward Stepwise Selection Adjusted RSq")
 
-
+#Exploring the coefficients of the best model
 selected_predictors=coef(m.forward, k.forward)
-print(selected_predictors)
-
-#LOOCV of the best model
-mforward_LOOCV= train(Quality ~. -Clarity -Aroma -Body,
-                  data = wine,
-                  method = "lm",
-                  trControl = control)
-
-print(mforward_LOOCV)
+print(selected_predictors) 
+#Same predictors as best-subset selection, therefore we will have same Estimated MSE and coefficients
 
 #Estimated MSE
-error.df["Forward","MSE"]=mforward_LOOCV$results$RMSE^2
+error.df["Forward","MSE"]=error.df["Subset","MSE"]
 
 #Estimated coefficients same as best subset selection
 df.coeff.estimates[3,-(2:4)]=coeff.subset
@@ -129,31 +133,29 @@ df.coeff.estimates[3,-(2:4)]=coeff.subset
 
 ####Question 1.d####
 
-#finding backward selection models
+#Finding backward selection models
 m.backward=regsubsets(Quality ~ ., wine, nvmax = totpred,method="backward")
 m.backward.summ=summary(m.backward)
 
-#best model according to adjusted r2
+#Best model according to adjusted r2
 k.backward=which.max(m.backward.summ$adjr2)
 
-plot(m.backward.summ$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", 
-     type = "l")
-points(k.backward, m.backward.summ$adjr2[k.backward], col = "red", cex = 2, pch = 20)
+#Visualizing adj r2 vs number of predictors
+ggplot(data.frame(predictors = 1:totpred, adj_R2 = m.backward.summ$adjr2),
+       aes(x=predictors,y=adj_R2))+geom_line(size=1)+
+  geom_point(aes(x=k.backward,y=m.backward.summ$adjr2[k.backward]),
+             color="red",size=4,shape=20)+
+  labs(x="Number of Variables",y="Adjusted RSq")+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("Backward Stepwise Selection Adjusted RSq")
 
-
+#Exploring the coefficients of the best model
 selected_predictors=coef(m.backward, k.backward)
 print(selected_predictors)
-
-#LOOCV of the best model
-mbackward_LOOCV= train(Quality ~. -Clarity -Aroma -Body,
-                      data = wine,
-                      method = "lm",
-                      trControl = control)
-
-print(mbackward_LOOCV)
+#Same predictors as best-subset selection, therefore we will have same Estimated MSE and coefficients
 
 #Estimated MSE
-error.df["Backward","MSE"]=mbackward_LOOCV$results$RMSE^2
+error.df["Backward","MSE"]=error.df["Subset","MSE"]
 
 #Estimated coefficients same as best subset selection
 df.coeff.estimates[4,-(2:4)]=coeff.subset
@@ -172,24 +174,29 @@ plot(m.ridge, xvar = "lambda")
 
 #Applying LOOCV to find best lambda
 cv.ridge = cv.glmnet(predictors, response, alpha = 0, nfolds = n, lambda = lambdas, grouped = FALSE, type.measure = "mse")
-plot(cv.ridge)
+
+#Tidy data frames to graph our model
+tidy_cv <- tidy(cv.ridge)
+glance_cv <- glance(cv.ridge)
+
+#Plot of MSE as a function of lambda
+g.ridge = ggplot(tidy_cv, aes(lambda, estimate)) +
+  geom_point(color="red") + scale_x_log10()+
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .25)+
+  geom_vline(xintercept = glance_cv$lambda.min) +
+  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("MSE vs Lambda Method Ridge Regression")
+
+g.ridge
+
+#Best lambda value: 0.3764936
 bestlamb_ridge=cv.ridge$lambda.min
 
 #Estimated MSE
-min(cv.ridge$cvm)
+error.df["RidgeReg","MSE"]=min(cv.ridge$cvm)
 
-#Applying LOOCV with best lambda to estimate test error
-sqerrors.ridge=sapply(1:n,function(i){
-  
-  m.ridge_i=glmnet(predictors[-i,], response[-i], alpha = 0, lambda = bestlamb_ridge)
-  
-  ridge.pred=predict(m.ridge_i, s = bestlamb_ridge, newx =matrix(predictors[i, ],nrow=1,ncol=7))
-  (ridge.pred - response[i])^2
-})
-
-#Estimated MSE
-error.df["RidgeReg","MSE"]=mean(sqerrors.ridge)
-
+#Final model
 m.ridge_final=glmnet(predictors, response, alpha = 0, lambda = bestlamb_ridge)
 #Estimated coefficients
 coeff.ridge=predict(m.ridge_final, type = "coefficients", s = bestlamb_ridge)[1:8, ]
@@ -204,22 +211,27 @@ plot(m.lasso, xvar = "lambda")
 
 #Applying LOOCV to find best lambda
 cv.lasso = cv.glmnet(predictors, response, alpha = 1, nfolds = n, lambda = lambdas, grouped = FALSE, type.measure = "mse")
-plot(cv.lasso)
+
+#Tidy data frames to graph our model
+tidy_cv <- tidy(cv.lasso)
+glance_cv <- glance(cv.lasso)
+
+#Plot of MSE as a function of lambda
+g.lasso = ggplot(tidy_cv, aes(lambda, estimate)) +
+  geom_point(color="red") + scale_x_log10()+
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .25)+
+  geom_vline(xintercept = glance_cv$lambda.min) +
+  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)+
+  theme(plot.title=element_text(hjust=0.5))+
+  ggtitle("MSE vs Lambda Method Lasso")
+
+g.lasso
+
+#Best lambda value: 0.1232847
 bestlamb_lasso=cv.lasso$lambda.min
 
 #Estimated MSE
-min(cv.lasso$cvm)
-
-sqerrors.lasso=sapply(1:n,function(i){
-  
-  m.lasso_i=glmnet(predictors[-i,], response[-i], alpha = 1, lambda = bestlamb_lasso)
-  
-  lasso.pred=predict(m.lasso_i, s = bestlamb_lasso, newx =matrix(predictors[i, ],nrow=1,ncol=7))
-  (lasso.pred - response[i])^2
-})
-
-#Estimated MSE
-error.df["Lasso","MSE"]=mean(sqerrors.lasso)
+error.df["Lasso","MSE"]=min(cv.lasso$cvm)
 
 #Final model
 m.lasso_final=glmnet(predictors, response, alpha = 1, lambda = bestlamb_lasso)
@@ -248,14 +260,15 @@ names(diabetes)=c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
 diabetes$Outcome=as.factor(diabetes$Outcome)
 
 #Defining the training control for the train method of caret 
+#10 folds cross validation
 set.seed(rdseed)
 train_control=trainControl(method = "cv", number = 10)
 
-#
+#Dataframe to track errors of each model
 error.df2=data.frame(Error=rep(0,6))
 row.names(error.df2)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
 
-#Data frame to track coefficients estimates
+#Dataframe to track coefficients estimates
 df.coeff.estimates2=as.data.frame(matrix(NA,nrow=6,ncol = 9))
 
 ####Question 2.a####
@@ -280,7 +293,6 @@ df.coeff.estimates2[1,]=m.full_glm$coefficients
 
 
 
-
 ####Question 2.b####
 
 #Redifining diabetes data frame to be used on bestglm package
@@ -288,7 +300,7 @@ diabetes_glm=diabetes
 diabetes_glm$y=diabetes_glm$Outcome
 diabetes_glm$Outcome=NULL
 
-
+#Best-subset selection model according to AIC
 fit.subset.logistic =  bestglm(Xy = diabetes_glm, family = binomial, IC = "AIC",
                              method = "exhaustive")
 
@@ -375,7 +387,7 @@ error.df2["Backward","Error"]=1-m.backward.loocv$results$Accuracy
 response_diab=diabetes[,9]
 predictors_diab=model.matrix(Outcome ~ ., diabetes)[, -1]
 lambdas = 10^seq(10, -2, length = 100)
-
+#lambdas = seq(0,0.1,by=0.001)
 
 #Visualizing coefficients values
 mlog.ridge = glmnet(predictors_diab, response_diab, alpha = 0, lambda = lambdas,
