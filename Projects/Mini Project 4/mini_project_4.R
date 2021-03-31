@@ -21,11 +21,13 @@ wine=read.delim("wine.txt")
 wine$Region=as.factor(wine$Region)
 
 #Dataframe to track errors of each model
-error.df=data.frame(MSE=rep(0,6))
-row.names(error.df)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
+error.df=data.frame(Full=0,Subset=0,Forward=0,Backward=0,RidgeReg=0,Lasso=0)
+row.names(error.df)="MSE"
 
 #Dataframe to track coefficients estimates
-df.coeff.estimates=as.data.frame(matrix(NA,nrow=6,ncol = 8))
+df.coeff.estimates=as.data.frame(matrix(NA,nrow=8,ncol = 6))
+
+names(df.coeff.estimates)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
 
 #Defining the training control for the train method of caret 
 control=trainControl(method = "LOOCV")
@@ -44,14 +46,14 @@ m_fullloocv = train(Quality ~ .,
 print(m_fullloocv)
 
 #Estimated MSE
-error.df["Full","MSE"]=m_fullloocv$results$RMSE^2
+error.df$Full=m_fullloocv$results$RMSE^2
 
 #Estimated coefficients
 mfull=lm(Quality~.,data=wine)
 coeff.full=mfull$coefficients
 
-names(df.coeff.estimates)=names(coeff.full)
-df.coeff.estimates[1,]=coeff.full
+row.names(df.coeff.estimates)=names(coeff.full)
+df.coeff.estimates[,1]=coeff.full
 
 
 ####Question 1.b####
@@ -88,14 +90,14 @@ msub_LOOCV= train(Quality ~. -Clarity -Aroma -Body,
 print(msub_LOOCV)
 
 #Estimated MSE
-error.df["Subset","MSE"]=msub_LOOCV$results$RMSE^2
+error.df$Subset=msub_LOOCV$results$RMSE^2
 
 #Final model
 m.subset=lm(Quality ~. -Clarity -Aroma -Body,data=wine)
 #Estimated coefficients
 coeff.subset=m.subset$coefficients
 
-df.coeff.estimates[2,-(2:4)]=coeff.subset
+df.coeff.estimates[-(2:4),2]=coeff.subset
 
 
 ####Question 1.c####
@@ -122,10 +124,10 @@ print(selected_predictors)
 #Same predictors as best-subset selection, therefore we will have same Estimated MSE and coefficients
 
 #Estimated MSE
-error.df["Forward","MSE"]=error.df["Subset","MSE"]
+error.df$Forward=error.df$Subset
 
 #Estimated coefficients same as best subset selection
-df.coeff.estimates[3,-(2:4)]=coeff.subset
+df.coeff.estimates[-(2:4),3]=coeff.subset
 
 
 ####Question 1.d####
@@ -152,10 +154,10 @@ print(selected_predictors)
 #Same predictors as best-subset selection, therefore we will have same Estimated MSE and coefficients
 
 #Estimated MSE
-error.df["Backward","MSE"]=error.df["Subset","MSE"]
+error.df$Backward=error.df$Subset
 
 #Estimated coefficients same as best subset selection
-df.coeff.estimates[4,-(2:4)]=coeff.subset
+df.coeff.estimates[-(2:4),4]=coeff.subset
 
 ####Question 1.e####
 
@@ -171,7 +173,8 @@ m.ridge = glmnet(predictors, response, alpha = 0, lambda = lambdas)
 plot(m.ridge, xvar = "lambda")
 
 #Applying LOOCV to find best lambda
-cv.ridge = cv.glmnet(predictors, response, alpha = 0, nfolds = n, lambda = lambdas, grouped = FALSE, type.measure = "mse")
+cv.ridge = cv.glmnet(predictors, response, alpha = 0, nfolds = n, 
+                     lambda = lambdas, grouped = FALSE, type.measure = "mse")
 
 #Tidy data frames to graph
 tidy_cv <- tidy(cv.ridge)
@@ -193,14 +196,14 @@ print(g.ridge)
 bestlamb_ridge=cv.ridge$lambda.min
 
 #Estimated MSE
-error.df["RidgeReg","MSE"]=min(cv.ridge$cvm)
+error.df$RidgeReg=min(cv.ridge$cvm)
 
 #Final model
 m.ridge_final=glmnet(predictors, response, alpha = 0, lambda = bestlamb_ridge)
 #Estimated coefficients
 coeff.ridge=predict(m.ridge, type = "coefficients", s = bestlamb_ridge)[1:8, ]
 
-df.coeff.estimates[5,]=coeff.ridge
+df.coeff.estimates[,5]=coeff.ridge
 
 ####Question 1.f####
 
@@ -210,7 +213,8 @@ m.lasso = glmnet(predictors, response, alpha = 1, lambda = lambdas)
 plot(m.lasso, xvar = "lambda")
 
 #Applying LOOCV to find best lambda
-cv.lasso = cv.glmnet(predictors, response, alpha = 1, nfolds = n, lambda = lambdas, grouped = FALSE, type.measure = "mse")
+cv.lasso = cv.glmnet(predictors, response, alpha = 1, nfolds = n, 
+                     lambda = lambdas, grouped = FALSE, type.measure = "mse")
 
 #Tidy data frames to graph
 tidy_cv <- tidy(cv.lasso)
@@ -232,7 +236,7 @@ print(g.lasso)
 bestlamb_lasso=cv.lasso$lambda.min
 
 #Estimated MSE
-error.df["Lasso","MSE"]=min(cv.lasso$cvm)
+error.df$Lasso=min(cv.lasso$cvm)
 
 #Final model
 m.lasso_final=glmnet(predictors, response, alpha = 1, lambda = bestlamb_lasso)
@@ -240,11 +244,11 @@ m.lasso_final=glmnet(predictors, response, alpha = 1, lambda = bestlamb_lasso)
 #Estimated coefficients
 coeff.lasso=predict(m.lasso_final, type = "coefficients", s = bestlamb_lasso)[1:8, ]
 
-df.coeff.estimates[6,]=coeff.lasso
+df.coeff.estimates[,6]=coeff.lasso
 
 ####Question 1.g####
 
-final.df=cbind(error.df,df.coeff.estimates)
+final.df=rbind(error.df,df.coeff.estimates)
 
 print(final.df)
 
@@ -268,11 +272,13 @@ set.seed(rdseed)
 train_control=trainControl(method = "cv", number = 10)
 
 #Dataframe to track errors of each model
-error.df2=data.frame(Error=rep(0,6))
-row.names(error.df2)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
+error.df2=data.frame(Full=0,Subset=0,Forward=0,Backward=0,RidgeReg=0,Lasso=0)
+row.names(error.df2)="Error"
 
 #Dataframe to track coefficients estimates
-df.coeff.estimates2=as.data.frame(matrix(NA,nrow=6,ncol = 9))
+df.coeff.estimates2=as.data.frame(matrix(NA,nrow=9,ncol = 6))
+
+names(df.coeff.estimates2)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
 
 ####Question 2.a####
 
@@ -287,13 +293,13 @@ m.full.cv = train(
 )
 
 #Estimated test error rate
-error.df2["Full","Error"]=1-m.full.cv$results$Accuracy
+error.df2$Full=1-m.full.cv$results$Accuracy
 
 #Estimated coefficients
 m.full_glm=glm(Outcome~.,data = diabetes,family = binomial)
 
-names(df.coeff.estimates2)=names(m.full_glm$coefficients)
-df.coeff.estimates2[1,]=m.full_glm$coefficients
+row.names(df.coeff.estimates2)=names(m.full_glm$coefficients)
+df.coeff.estimates2[,1]=m.full_glm$coefficients
 
 
 
@@ -322,13 +328,13 @@ m.subset.cv = train(
 )
 
 #Estimated test error rate
-error.df2["Subset","Error"]=1-m.subset.cv$results$Accuracy
+error.df2$Subset=1-m.subset.cv$results$Accuracy
 
 #Best model
 m_log.subset=glm(Outcome ~ .-SkinThickness,data=diabetes,family = binomial)
 #Estimated coefficients
 c.subset=m_log.subset$coefficients
-df.coeff.estimates2[2,-5]=c.subset
+df.coeff.estimates2[-5,2]=c.subset
 
 
 ####Question 2.c####
@@ -340,11 +346,11 @@ print(fit.best.forward$BestModel$coefficients) #SkinThickness was dropped
 #Same model as in best-subset selection method
 
 #Estimated test error rate
-error.df2["Forward","Error"]=1-m.subset.cv$results$Accuracy
+error.df2$Forward=error.df2$Subset
 
 
 #Estimated coefficients
-df.coeff.estimates2[3,-5]=c.subset
+df.coeff.estimates2[-5,3]=c.subset
 
 
 
@@ -357,10 +363,10 @@ print(fit.best.backward$BestModel$coefficients) #SkinThickness was dropped
 #Same model as best-subset selection method
 
 #Estimated test error rate
-error.df2["Backward","Error"]=1-m.subset.cv$results$Accuracy
+error.df2$Backward=error.df2$Subset
 
 #Estimated coefficients
-df.coeff.estimates2[4,-5]=c.subset
+df.coeff.estimates2[-5,4]=c.subset
 
 
 
@@ -405,7 +411,7 @@ print(g.ridgecv)
 loglamb_ridge=cv10.ridge$lambda.min
 
 #Estimated test error
-error.df2["RidgeReg","Error"]=min(cv10.ridge$cvm)
+error.df2$RidgeReg=min(cv10.ridge$cvm)
 
 
 #Best model
@@ -413,7 +419,7 @@ m_log.ridge=glmnet(predictors_diab, response_diab, alpha = 0, lambda = loglamb_r
                    family = "binomial")
 #Estimated coefficients
 c.ridge= predict(m_log.ridge, type = "coefficients", s = loglamb_ridge)[1:9, ]
-df.coeff.estimates2[5,]=c.ridge
+df.coeff.estimates2[,5]=c.ridge
 
 
 
@@ -450,7 +456,7 @@ print(g.lassocv)
 
 
 #Estimated test error rate
-error.df2["Lasso","Error"]=min(cv10.lasso$cvm)
+error.df2$Lasso=min(cv10.lasso$cvm)
 
 
 #Lambda for the minimal test error rate
@@ -461,10 +467,12 @@ m_log.lasso=glmnet(predictors_diab, response_diab, alpha = 1, lambda = loglamb_l
                    family = "binomial")
 #Estimated coefficients
 c.lasso = predict(m_log.lasso, type = "coefficients", s = loglamb_lasso)[1:9, ]
-df.coeff.estimates2[6,]=c.lasso
+df.coeff.estimates2[,6]=c.lasso
 
 
 
 ####Question 2.g####
 
-final.df2=cbind(error.df2,df.coeff.estimates2)
+final.df2=rbind(error.df2,df.coeff.estimates2)
+
+print(final.df2)
