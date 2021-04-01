@@ -4,8 +4,10 @@ library(ggplot2) #Used for graphics and visual representations
 library(MASS) #Used for LD and QD analysis
 library(caret) #Used to handle LOOCV training
 
-library(leaps) #Used for best-subset and forward and backward stepwise selection with linear models 
-library(bestglm) #Used for best-subset and forward and backward stepwise selection with generalized linear models 
+library(leaps) #Used for best-subset and forward and backward stepwise selection
+               #with linear models 
+library(bestglm) #Used for best-subset and forward and backward stepwise selection
+                 #with generalized linear models 
 library(glmnet) #Use for Ridge Regression and Lasso
 library(broom) #To create tidy objects for ggplot visualization
 
@@ -25,7 +27,7 @@ error.df=data.frame(Full=0,Subset=0,Forward=0,Backward=0,RidgeReg=0,Lasso=0)
 row.names(error.df)="MSE"
 
 #Dataframe to track coefficients estimates
-df.coeff.estimates=as.data.frame(matrix(NA,nrow=8,ncol = 6))
+df.coeff.estimates=as.data.frame(matrix("",nrow=8,ncol = 6))
 
 names(df.coeff.estimates)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
 
@@ -34,6 +36,7 @@ control=trainControl(method = "LOOCV")
 
 #Number of observations
 n=nrow(wine)
+
 
 ####Question 1.a####
 
@@ -121,7 +124,8 @@ print(ggplot(data.frame(predictors = 1:totpred, adj_R2 = m.forward.summ$adjr2),
 #Exploring the coefficients of the best model
 selected_predictors=coef(m.forward, k.forward)
 print(selected_predictors) 
-#Same predictors as best-subset selection, therefore we will have same Estimated MSE and coefficients
+#Same predictors as best-subset selection,
+#therefore we will end with the same Estimated MSE and coefficients
 
 #Estimated MSE
 error.df$Forward=error.df$Subset
@@ -151,7 +155,8 @@ print(ggplot(data.frame(predictors = 1:totpred, adj_R2 = m.backward.summ$adjr2),
 #Exploring the coefficients of the best model
 selected_predictors=coef(m.backward, k.backward)
 print(selected_predictors)
-#Same predictors as best-subset selection, therefore we will have same Estimated MSE and coefficients
+#Same predictors as best-subset selection
+#therefore we will end with the same Estimated MSE and coefficients
 
 #Estimated MSE
 error.df$Backward=error.df$Subset
@@ -166,26 +171,23 @@ response=wine[,6]
 predictors=model.matrix(Quality ~ ., wine)[, -1]
 lambdas = 10^seq(10, -3, length = 100)
 
-
+#Fitting ridge regression models for the different lambdas
 m.ridge = glmnet(predictors, response, alpha = 0, lambda = lambdas)
-
-#Visualizing coefficients values vs lambdas
-plot(m.ridge, xvar = "lambda")
 
 #Applying LOOCV to find best lambda
 cv.ridge = cv.glmnet(predictors, response, alpha = 0, nfolds = n, 
                      lambda = lambdas, grouped = FALSE, type.measure = "mse")
+
 
 #Tidy data frames to graph
 tidy_cv <- tidy(cv.ridge)
 glance_cv <- glance(cv.ridge)
 
 #Plot of MSE as a function of lambda
-g.ridge = ggplot(tidy_cv, aes(lambda, estimate)) +
+g.ridge = ggplot(tidy_cv, aes(lambda, estimate))+
   geom_point(color="red") + scale_x_log10()+
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .25)+
-  geom_vline(xintercept = glance_cv$lambda.min) +
-  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)+
+  geom_vline(xintercept = glance_cv$lambda.min)+
   labs(x="Lambda",y="MSE")+
   theme(plot.title=element_text(hjust=0.5))+
   ggtitle("MSE vs Lambda, Method Ridge Regression")
@@ -194,6 +196,10 @@ print(g.ridge)
 
 #Best lambda value: 0.3125716
 bestlamb_ridge=cv.ridge$lambda.min
+
+#Visualizing best lambda and coefficients
+plot(m.ridge, xvar = "lambda")
+abline(v = log(bestlamb_ridge))
 
 #Estimated MSE
 error.df$RidgeReg=min(cv.ridge$cvm)
@@ -207,10 +213,8 @@ df.coeff.estimates[,5]=coeff.ridge
 
 ####Question 1.f####
 
+#Fitting lasso models for the different lambdas
 m.lasso = glmnet(predictors, response, alpha = 1, lambda = lambdas)
-
-#Visualizing coefficients values vs lambdas
-plot(m.lasso, xvar = "lambda")
 
 #Applying LOOCV to find best lambda
 cv.lasso = cv.glmnet(predictors, response, alpha = 1, nfolds = n, 
@@ -221,11 +225,10 @@ tidy_cv <- tidy(cv.lasso)
 glance_cv <- glance(cv.lasso)
 
 #Plot of MSE as a function of lambda
-g.lasso = ggplot(tidy_cv, aes(lambda, estimate)) +
+g.lasso = ggplot(tidy_cv, aes(lambda, estimate))+
   geom_point(color="red") + scale_x_log10()+
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .25)+
-  geom_vline(xintercept = glance_cv$lambda.min) +
-  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)+
+  geom_vline(xintercept = glance_cv$lambda.min)+
   labs(x="Lambda",y="MSE")+
   theme(plot.title=element_text(hjust=0.5))+
   ggtitle("MSE vs Lambda, Method Lasso")
@@ -234,6 +237,10 @@ print(g.lasso)
 
 #Best lambda value: 0.1261857
 bestlamb_lasso=cv.lasso$lambda.min
+
+#Visualizing best lambda and coefficients
+plot(m.lasso, xvar = "lambda")
+abline(v = log(bestlamb_lasso))
 
 #Estimated MSE
 error.df$Lasso=min(cv.lasso$cvm)
@@ -276,7 +283,7 @@ error.df2=data.frame(Full=0,Subset=0,Forward=0,Backward=0,RidgeReg=0,Lasso=0)
 row.names(error.df2)="Error"
 
 #Dataframe to track coefficients estimates
-df.coeff.estimates2=as.data.frame(matrix(NA,nrow=9,ncol = 6))
+df.coeff.estimates2=as.data.frame(matrix("",nrow=9,ncol = 6))
 
 names(df.coeff.estimates2)=c("Full","Subset","Forward","Backward","RidgeReg","Lasso")
 
@@ -343,15 +350,14 @@ fit.best.forward =  bestglm(Xy = diabetes_glm, family = binomial, IC = "AIC",
                              method = "forward")
 
 print(fit.best.forward$BestModel$coefficients) #SkinThickness was dropped
-#Same model as in best-subset selection method
+#Same model as in best-subset selection method,
+#therefore we will end with the same Estimated test error and coefficients
 
 #Estimated test error rate
 error.df2$Forward=error.df2$Subset
 
-
 #Estimated coefficients
 df.coeff.estimates2[-5,3]=c.subset
-
 
 
 ####Question 2.d####
@@ -361,14 +367,13 @@ fit.best.backward =  bestglm(Xy = diabetes_glm, family = binomial, IC = "AIC",
 
 print(fit.best.backward$BestModel$coefficients) #SkinThickness was dropped
 #Same model as best-subset selection method
+#therefore we will end with the same Estimated test error and coefficients
 
 #Estimated test error rate
 error.df2$Backward=error.df2$Subset
 
 #Estimated coefficients
 df.coeff.estimates2[-5,4]=c.subset
-
-
 
 
 ####Question 2.e####
@@ -379,12 +384,10 @@ predictors_diab=model.matrix(Outcome ~ ., diabetes)[, -1]
 lambdas = 10^seq(10, -3, length = 100)
 
 
-
+#Fitting ridge regression models for the different lambdas
 mlog.ridge = glmnet(predictors_diab, response_diab, alpha = 0, lambda = lambdas,
                     family = "binomial")
 
-#Visualizing coefficients values vs lambdas
-plot(mlog.ridge, xvar = "lambda")
 
 #Applying 10-fold cv to find best lambda
 set.seed(rdseed)
@@ -396,11 +399,10 @@ tidy_cv <- tidy(cv10.ridge)
 glance_cv <- glance(cv10.ridge)
 
 #Plot of MSE as a function of lambda
-g.ridgecv = ggplot(tidy_cv, aes(lambda, estimate)) +
+g.ridgecv = ggplot(tidy_cv, aes(lambda, estimate))+
   geom_point(color="red") + scale_x_log10()+
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .25)+
-  geom_vline(xintercept = glance_cv$lambda.min) +
-  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)+
+  geom_vline(xintercept = glance_cv$lambda.min)+
   labs(x="Lambda",y="Test Error Rate")+
   theme(plot.title=element_text(hjust=0.5))+
   ggtitle("Test Error vs Lambda, Method Ridge Regression")
@@ -409,6 +411,10 @@ print(g.ridgecv)
 
 #Lambda for the minimal test error rate
 loglamb_ridge=cv10.ridge$lambda.min
+
+#Visualizing best lambda and coefficients
+plot(mlog.ridge, xvar = "lambda")
+abline(v = log(loglamb_ridge))
 
 #Estimated test error
 error.df2$RidgeReg=min(cv10.ridge$cvm)
@@ -422,16 +428,12 @@ c.ridge= predict(m_log.ridge, type = "coefficients", s = loglamb_ridge)[1:9, ]
 df.coeff.estimates2[,5]=c.ridge
 
 
-
 ####Question 2.f####
 
 
-
+#Fitting lasso models for the different lambdas
 mlog.lasso = glmnet(predictors_diab, response_diab, alpha = 1, lambda = lambdas,
                     family = "binomial")
-
-#Visualizing coefficients values vs lambdas
-plot(mlog.lasso, xvar = "lambda")
 
 #Applying 10-fold cv to find best lambda
 set.seed(rdseed)
@@ -443,11 +445,10 @@ tidy_cv <- tidy(cv10.lasso)
 glance_cv <- glance(cv10.lasso)
 
 #Plot of MSE as a function of lambda
-g.lassocv = ggplot(tidy_cv, aes(lambda, estimate)) +
+g.lassocv = ggplot(tidy_cv, aes(lambda, estimate))+
   geom_point(color="red") + scale_x_log10()+
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = .25)+
-  geom_vline(xintercept = glance_cv$lambda.min) +
-  geom_vline(xintercept = glance_cv$lambda.1se, lty = 2)+
+  geom_vline(xintercept = glance_cv$lambda.min)+
   labs(x="Lambda",y="Test Error Rate")+
   theme(plot.title=element_text(hjust=0.5))+
   ggtitle("Test Error vs Lambda, Method Lasso")
@@ -461,6 +462,10 @@ error.df2$Lasso=min(cv10.lasso$cvm)
 
 #Lambda for the minimal test error rate
 loglamb_lasso=cv10.lasso$lambda.min
+
+#Visualizing best lambda and coefficients
+plot(mlog.lasso, xvar = "lambda")
+abline(v = log(loglamb_lasso))
 
 #Best model
 m_log.lasso=glmnet(predictors_diab, response_diab, alpha = 1, lambda = loglamb_lasso,
