@@ -36,3 +36,32 @@ x = model.matrix(Salary ~ ., Hitters)[, -1]
 x[,-c(14,15,19)]=scale(x[,-c(14,15,19)])
 
 
+pca_x=prcomp(x)
+
+scores=cov(pca_x$x)
+
+#biplot
+pca_x$rotation
+biplot(pca_x, scale=0)
+
+#Percent of Variance explained
+diag(scores)/sum(diag(scores))
+pc_var=pca_x$sdev^2
+pve=pc_var/sum(pc_var)
+
+
+g_pve=ggplot(data.frame(PC=1:ncol(x),pve=pve),aes(x=PC,y=pve))+geom_line(size=1)+
+  geom_point(shape=1,size=2)+ylim (0,1)+
+  xlab("Principal Component")+  ylab("Proportion of Variance Explained")
+#4 principal components seems to be appropriate
+
+plot(pve, xlab = "Principal Component", ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b')
+
+
+g_cum=ggplot(data.frame(PC=1:ncol(x),CumPVE=cumsum(pve)),aes(x=PC,y=CumPVE))+geom_line(size=1)+
+  geom_point(shape=1,size=2)+
+  xlab("Principal Component")+  ylab("Cumulative Proportion of Variance Explained")
+#With 4 principal components we explained around 84% of the variance
+
+
+plot(cumsum(pve), xlab = "Principal Component", ylab = "Cumulative Proportion of Variance Explained", ylim = c(0,1), type = 'b')
