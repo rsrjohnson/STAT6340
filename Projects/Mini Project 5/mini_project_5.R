@@ -1,15 +1,12 @@
 #Packages
 library(ggplot2) #Used for graphics and visual representations
 library(ggbiplot) #Used to generate biplot ggplot object 
+library(ggdendro)
 
 #library(ggfortify)
 
 library(caret) #Used to handle LOOCV training
 
-library(leaps) #Used for best-subset and forward and backward stepwise selection
-#with linear models 
-library(bestglm) #Used for best-subset and forward and backward stepwise selection
-#with generalized linear models 
 library(glmnet) #Use for Ridge Regression and Lasso
 library(broom) #To create tidy objects for ggplot visualization
 
@@ -40,21 +37,20 @@ summary(Hitters) #Different scales observed, standardizing the data is recommend
 y = Hitters$Salary
 x = model.matrix(Salary ~ ., Hitters)[, -1]
 
-#Standardizing the predictors
-x=scale(x)
+#Standardizing
+x.std=scale(x)
 
 
 #pca_x=prcomp(x)
 
-pca_x=prcomp(x)
+#Carrying out PCA
+pca_x=prcomp(x.std,center = FALSE, scale = FALSE)
 
 #Scores
 scores=pca_x$x
 
 #Sample covariance matrix
 var_scores=cov(scores)
-
-
 
 #Percent of Variance explained
 diag(var_scores)/sum(diag(var_scores))
@@ -65,7 +61,7 @@ pve=pc_var/sum(pc_var)
 g_pve=ggplot(data.frame(PC=1:ncol(x),pve=pve),aes(x=PC,y=pve))+geom_line(size=1)+
   geom_point(shape=1,size=2)+ylim (0,1)+
   xlab("Principal Component")+  ylab("Proportion of Variance Explained")
-#4 principal components seems to be appropriate
+#5 principal components seems to be appropriate
 
 plot(pve, xlab = "Principal Component", ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b')
 
@@ -85,33 +81,21 @@ plot(cumsum(pve), xlab = "Principal Component", ylab = "Cumulative Proportion of
 loadvec12=pca_x$rotation[,1:2]
 
 #Correlations of quantitative variables and the first two principal components
-pca_x$rotation[,1]*var_scores[1,1]
-pca_x$rotation[,2]*var_scores[2,2]
+#pca_x$rotation[,1]*var_scores[1,1]
+#pca_x$rotation[,2]*var_scores[2,2]
 
-df_corr=data.frame(PC1=pca_x$rotation[,1]*var_scores[1,1],PC2=pca_x$rotation[,2]*var_scores[2,2])
+pca_x$rotation[,1]*pca_x$sdev[1]
+pca_x$rotation[,2]*pca_x$sdev[2]
+
+df_corr=data.frame(PC1=pca_x$rotation[,1]*pca_x$sdev[1],PC2=pca_x$rotation[,2]*pca_x$sdev[2])
+
+#df_corr=data.frame(PC1=pca_x$rotation[,1]*var_scores[1,1],PC2=pca_x$rotation[,2]*var_scores[2,2])
 
 #Scores
 head(pca_x$x[,1:2])
 
-
-#covariance of the standardized quantitative variables with the two components.
-cov(pca_x$x[,1],x)
-cov(pca_x$x[,2],x)
-cov(pca_x$x[,1:2],x)
-
-var_scores[1,1]*pca_x$rotation[,1]
-var_scores[2,2]*pca_x$rotation[,2]
-c(var_scores[1,1],var_scores[2,2])*pca_x$rotation[,1:2]
-
-
-
 #correlation of the standardized quantitative variables with the two components.
-cor(pca_x$x[,1],x)
-cor(pca_x$x[,2],x)
-cor(pca_x$x[,1:2],x)
-
-var_scores[1,1]*pca_x$rotation[,1]/(sd(pca_x$x[,1])*sd(x))
-
+t(cor(pca_x$x[,1:2],x.std))
 
 
 #biplot
@@ -139,12 +123,38 @@ print("Experiment 2")
 
 ####Question 2.c####
 
-hc.x = hclust(dist(x), method = "complete")
+x4clust=x.std
+
+row.names(x4clust)=1:n
+
+hc.x = hclust(dist(x4clust), method = "complete")
 
 plot(hc.x, main = "Complete Linkage", xlab = "", sub = "", 
-     cex = 0.7,labels = FALSE)
+     cex = 0.3)
+
+plot(hc.x, cex = 0.3)
+
+dhc <- as.dendrogram(hc.x)
+# Rectangular lines
+ddata <- dendro_data(dhc, type = "rectangle")
+p <- ggplot(segment(ddata)) + 
+  geom_segment()
+  #coord_flip()+ scale_y_reverse(expand = c(0.2, 0))
+
+ggdendrogram(hc.x, rotate = FALSE, size = 2,)
+
 
 hc2=cutree(hc.x, 2)
+
+lab=ifelse(hc2==1,"1","2")
+
+ggdf1=data.frame(CRuns=x.std[,11],CRBI=x.std[,12],Cluster=lab)
+
+ggplot(data=ggdf1,aes(x=CRuns,y=CRBI,color=Cluster))+geom_point()
+
+ggdf2=data.frame(CAtBat=x.std[,8],CHits=x.std[,9],Cluster=lab)
+
+ggplot(data=ggdf2,aes(x=CAtBat,y=CHits,color=Cluster))+geom_point()
 
 #Indeces of cluster 1
 c1.hc=which(hc2==1)
@@ -162,12 +172,12 @@ mean(y[-c1.hc])
 
 
 set.seed(rdseed)
-km2 = kmeans(x, 2, nstart = 20)
+km2 = kmeans(x.std, 2, nstart = 20)
 
 #Cluster means
 km2$centers
 
-#Indeces of cluster 1
+#Indexes of cluster 1
 c1.km=which(km2$cluster==1)
 
 apply(x[km2$cluster==1,],2,mean)
@@ -197,9 +207,9 @@ error.df=data.frame(Full=0,PCR=0,PLS=0,RidgeReg=0)
 
 ####Question 3.a####
 
-reg_hitters=Hitters
-reg_hitters$logSalary=log(Hitters$Salary)
-reg_hitters$Salary=NULL
+# reg_hitters=Hitters
+# reg_hitters$logSalary=log(Hitters$Salary)
+# reg_hitters$Salary=NULL
 
 # nm=names(reg_hitters)
 # 
@@ -216,9 +226,9 @@ reg_hitters$Salary=NULL
 control=trainControl(method = "LOOCV")
 
 #LOOCV on full regression model
-m_fullloocv = train(logSalary~.,
-                    data = reg_hitters,
-                    preProcess=c("center","scale"),
+m_fullloocv = train(log(Salary)~.,
+                    data = Hitters,
+                    preProcess=c("scale"),
                     method = "lm",
                     trControl = control)
 
@@ -226,15 +236,31 @@ m_fullloocv = train(logSalary~.,
 error.df$Full=m_fullloocv$results$RMSE^2
 
 ####Question 3.b####
-pcr.fit=pcr(logSalary ~ ., data = reg_hitters, center=TRUE,scale = TRUE, validation = "LOO")
+pcr.fit=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
 
-error.df$PCR=mean(pcr.fit$residuals^2)
+summary(pcr.fit)
+
+validationplot(pcr.fit, val.type = "MSEP")
+
+M_pcr=which.min(MSEP(pcr.fit)$val[1, 1,])
+error.df$PCR=MSEP(pcr.fit)$val[1, 1,M_pcr]
+
+pcr.fitBest=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO",ncomp=M_pcr-1)
+summary(pcr.fitBest)
 
 
 ####Question 3.c####
-pls.fit=plsr(logSalary ~ ., data = reg_hitters, center=TRUE,scale = TRUE, validation = "LOO")
+pls.fit=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
 
-error.df$PLS=mean(pls.fit$residuals^2)
+
+
+validationplot(pls.fit, val.type = "MSEP")
+
+M_pls=which.min(MSEP(pls.fit)$val[1, 1,])
+error.df$PLS=MSEP(pls.fit)$val[1, 1,M_pls]
+
+pls.fitBest=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO",ncomp=M_pls-1)
+summary(pls.fitBest)
 
 
 ####Question 3.d####
