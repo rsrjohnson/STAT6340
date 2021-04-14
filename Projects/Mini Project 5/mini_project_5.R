@@ -1,9 +1,9 @@
 #Packages
 library(ggplot2) #Used for graphics and visual representations
-library(ggbiplot) #Used to generate biplot ggplot object 
 library(ggdendro)
-
-#library(ggfortify)
+library(factoextra)
+library(plotly)
+library(ggfortify)  #Used to generate biplot ggplot object 
 
 library(caret) #Used to handle LOOCV training
 
@@ -12,7 +12,7 @@ library(broom) #To create tidy objects for ggplot visualization
 
 library(ISLR)
 
-library(pls)
+library(pls) #Used for PCR and PLS.
 
 rdseed=8466 #Seed to replicate results
 
@@ -29,7 +29,10 @@ n=nrow(Hitters)
 ####Question 1.a####
 
 #Exploring the data
-summary(Hitters) #Different scales observed, standardizing the data is recommended
+summary(Hitters) 
+apply(Hitters[,-c(14,15,20)], 2, mean)
+apply(Hitters[,-c(14,15,20)], 2, sd)
+#Different scales observed, standardizing the data is recommended
 
 
 ####Question 1.b####
@@ -61,18 +64,16 @@ pve=pc_var/sum(pc_var)
 g_pve=ggplot(data.frame(PC=1:ncol(x),pve=pve),aes(x=PC,y=pve))+geom_line(size=1)+
   geom_point(shape=1,size=2)+ylim (0,1)+
   xlab("Principal Component")+  ylab("Proportion of Variance Explained")
-#5 principal components seems to be appropriate
 
-plot(pve, xlab = "Principal Component", ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b')
+print(g_pve) #5 principal components seems to be appropriate
 
 
 g_cum=ggplot(data.frame(PC=1:ncol(x),CumPVE=cumsum(pve)),aes(x=PC,y=CumPVE))+geom_line(size=1)+
   geom_point(shape=1,size=2)+
   xlab("Principal Component")+  ylab("Cumulative Proportion of Variance Explained")
+
+print(g_cum)
 #With 5 principal components we explained close to 84% of the variation
-
-
-plot(cumsum(pve), xlab = "Principal Component", ylab = "Cumulative Proportion of Variance Explained", ylim = c(0,1), type = 'b')
 
 
 ####Question 1.c####
@@ -80,16 +81,10 @@ plot(cumsum(pve), xlab = "Principal Component", ylab = "Cumulative Proportion of
 #Loading vectors of first 2 PCs
 loadvec12=pca_x$rotation[,1:2]
 
-#Correlations of quantitative variables and the first two principal components
-#pca_x$rotation[,1]*var_scores[1,1]
-#pca_x$rotation[,2]*var_scores[2,2]
 
-pca_x$rotation[,1]*pca_x$sdev[1]
-pca_x$rotation[,2]*pca_x$sdev[2]
 
+#Correlations of variables and the first two principal components
 df_corr=data.frame(PC1=pca_x$rotation[,1]*pca_x$sdev[1],PC2=pca_x$rotation[,2]*pca_x$sdev[2])
-
-#df_corr=data.frame(PC1=pca_x$rotation[,1]*var_scores[1,1],PC2=pca_x$rotation[,2]*var_scores[2,2])
 
 #Scores
 head(pca_x$x[,1:2])
@@ -98,8 +93,9 @@ head(pca_x$x[,1:2])
 t(cor(pca_x$x[,1:2],x.std))
 
 
-#biplot
-ggbiplot(pca_x)
+
+autoplot(pca_x,loadings=TRUE, loadings.colour = 'blue',
+         loadings.label = TRUE, loadings.label.size = 3,loadings.label.repel=T)
 
 pca_x$rotation
 biplot(pca_x, scale=0)
@@ -130,9 +126,23 @@ row.names(x4clust)=1:n
 hc.x = hclust(dist(x4clust), method = "complete")
 
 plot(hc.x, main = "Complete Linkage", xlab = "", sub = "", 
-     cex = 0.3)
+     cex = 0.35)
 
-plot(hc.x, cex = 0.3)
+set.seed(rdseed)
+toPlot <- sample(rownames(x4clust), size=floor(n/3))
+
+## use rownames as labels
+labels <- rownames(x4clust)
+## clear labels not present in toPlot
+labels[ !(labels %in% toPlot) ] <- ""
+
+
+
+
+
+plot(hc.x, cex = 0.5,labels=labels)
+
+plot(hc.x, hang=-1,cex=0.3)
 
 dhc <- as.dendrogram(hc.x)
 # Rectangular lines
@@ -142,6 +152,19 @@ p <- ggplot(segment(ddata)) +
   #coord_flip()+ scale_y_reverse(expand = c(0.2, 0))
 
 ggdendrogram(hc.x, rotate = FALSE, size = 2,)
+
+
+plot_dendro(dhc,height = 1600, width = 800) %>% 
+  hide_legend() %>% 
+  highlight(persistent = TRUE, dynamic = TRUE)
+
+
+
+ptest <- ggplot(dhc, horiz = FALSE, theme = NULL)
+plotly_build(ptest)
+
+
+fviz_dend(hc.x,repel=FALSE,cex = 0.5, k = 2, color_labels_by_k = TRUE)
 
 
 hc2=cutree(hc.x, 2)
@@ -197,6 +220,17 @@ sum(diag(var(x))*(nrow(x)-1))
 
 
 km2$betweenss/km2$totss
+labkm=ifelse(km2$cluster==1,"1","2")
+
+ggdf1=data.frame(CRuns=x.std[,11],CRBI=x.std[,12],Cluster=labkm)
+
+ggplot(data=ggdf1,aes(x=CRuns,y=CRBI,color=Cluster))+geom_point()
+
+ggdf2=data.frame(CAtBat=x.std[,8],CHits=x.std[,9],Cluster=labkm)
+
+ggplot(data=ggdf2,aes(x=CAtBat,y=CHits,color=Cluster))+geom_point()
+
+
 
 
 #Experiment 3
@@ -240,7 +274,9 @@ pcr.fit=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
 
 summary(pcr.fit)
 
-validationplot(pcr.fit, val.type = "MSEP")
+#Validation Plot
+ggplot(data.frame(Components=0:19,MSEP=MSEP(pcr.fit)$val[1, 1,]),
+       aes(x=Components,y=MSEP))+geom_line()+geom_point()
 
 M_pcr=which.min(MSEP(pcr.fit)$val[1, 1,])
 error.df$PCR=MSEP(pcr.fit)$val[1, 1,M_pcr]
@@ -252,9 +288,9 @@ summary(pcr.fitBest)
 ####Question 3.c####
 pls.fit=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
 
-
-
-validationplot(pls.fit, val.type = "MSEP")
+#Validation Plot
+ggplot(data.frame(Components=0:19,MSEP=MSEP(pls.fit)$val[1, 1,]),
+       aes(x=Components,y=MSEP))+geom_line()+geom_point()
 
 M_pls=which.min(MSEP(pls.fit)$val[1, 1,])
 error.df$PLS=MSEP(pls.fit)$val[1, 1,M_pls]
