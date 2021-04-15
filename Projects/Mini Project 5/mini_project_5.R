@@ -7,7 +7,7 @@ library(ggfortify)  #Used to generate biplot ggplot object
 
 library(caret) #Used to handle LOOCV training
 
-library(glmnet) #Use for Ridge Regression and Lasso
+library(glmnet) #Use for Ridge Regression
 library(broom) #To create tidy objects for ggplot visualization
 
 library(ISLR)
@@ -29,9 +29,10 @@ n=nrow(Hitters)
 ####Question 1.a####
 
 #Exploring the data
-summary(Hitters) 
-apply(Hitters[,-c(14,15,20)], 2, mean)
-apply(Hitters[,-c(14,15,20)], 2, sd)
+summary(Hitters[,-c(14,15,19,20)])
+
+df.stats=data.frame(Mean=apply(Hitters[,-c(14,15,19,20)], 2, mean),
+                    SD=apply(Hitters[,-c(14,15,19,20)], 2, sd))
 #Different scales observed, standardizing the data is recommended
 
 
@@ -44,21 +45,17 @@ x = model.matrix(Salary ~ ., Hitters)[, -1]
 x.std=scale(x)
 
 
-#pca_x=prcomp(x)
-
 #Carrying out PCA
 pca_x=prcomp(x.std,center = FALSE, scale = FALSE)
-
-#Scores
-scores=pca_x$x
 
 #Sample covariance matrix
 var_scores=cov(scores)
 
-#Percent of Variance explained
-diag(var_scores)/sum(diag(var_scores))
+#Variance and Percent of Variance explained
 pc_var=pca_x$sdev^2
 pve=pc_var/sum(pc_var)
+
+data.frame(Variance=pc_var, PVE=pve,CumPVE=cumsum(pve))
 
 
 g_pve=ggplot(data.frame(PC=1:ncol(x),pve=pve),aes(x=PC,y=pve))+geom_line(size=1)+
@@ -78,20 +75,13 @@ print(g_cum)
 
 ####Question 1.c####
 
-#Loading vectors of first 2 PCs
-loadvec12=pca_x$rotation[,1:2]
 
-
-
-#Correlations of variables and the first two principal components
-df_corr=data.frame(PC1=pca_x$rotation[,1]*pca_x$sdev[1],PC2=pca_x$rotation[,2]*pca_x$sdev[2])
+#Correlations of quantitative variables and the first two principal components
+df_corr=data.frame(PC1=pca_x$rotation[-c(14,15,19),1]*pca_x$sdev[1],
+                   PC2=pca_x$rotation[-c(14,15,19),2]*pca_x$sdev[2])
 
 #Scores
 head(pca_x$x[,1:2])
-
-#correlation of the standardized quantitative variables with the two components.
-t(cor(pca_x$x[,1:2],x.std))
-
 
 
 autoplot(pca_x,loadings=TRUE, loadings.colour = 'blue',
@@ -128,8 +118,7 @@ hc.x = hclust(dist(x4clust), method = "complete")
 plot(hc.x, main = "Complete Linkage", xlab = "", sub = "", 
      cex = 0.35)
 
-set.seed(rdseed)
-toPlot <- sample(rownames(x4clust), size=floor(n/3))
+toPlot <- hc.x$order[seq(1,n,3)]
 
 ## use rownames as labels
 labels <- rownames(x4clust)
@@ -140,7 +129,7 @@ labels[ !(labels %in% toPlot) ] <- ""
 
 
 
-plot(hc.x, cex = 0.5,labels=labels)
+plot(hc.x,main = "Complete Linkage", cex = 0.5,labels=labels,xlab="Index of Player",sub="",hang=-1)
 
 plot(hc.x, hang=-1,cex=0.3)
 
