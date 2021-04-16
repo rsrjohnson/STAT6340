@@ -1,8 +1,8 @@
 #Packages
 library(ggplot2) #Used for graphics and visual representations
-library(ggdendro)
-library(factoextra)
-library(plotly)
+# library(ggdendro)
+# library(factoextra)
+# library(plotly)
 library(ggfortify)  #Used to generate biplot ggplot object 
 
 library(caret) #Used to handle LOOCV training
@@ -46,10 +46,10 @@ x.std=scale(x)
 
 
 #Carrying out PCA
-pca_x=prcomp(x.std,center = FALSE, scale = FALSE)
+pca_x=prcomp(x,center = TRUE, scale = TRUE)
 
 #Sample covariance matrix
-var_scores=cov(scores)
+var_scores=cov(pca_x$x)
 
 #Variance and Percent of Variance explained
 pc_var=pca_x$sdev^2
@@ -83,19 +83,17 @@ df_corr=data.frame(PC1=pca_x$rotation[-c(14,15,19),1]*pca_x$sdev[1],
 #Scores
 head(pca_x$x[,1:2])
 
-
 autoplot(pca_x,loadings=TRUE, loadings.colour = 'blue',
-         loadings.label = TRUE, loadings.label.size = 3,loadings.label.repel=T)
+         loadings.label = TRUE, loadings.label.size = 3,loadings.label.repel=TRUE)
 
-pca_x$rotation
-biplot(pca_x, scale=0)
+
 
 
 #Experiment 2
 print("Experiment 2")
 
 ####Question 2.a####
-# Standardizing data is recommended because otherwise the range of values in each feature will act as a weight when determining how to cluster data, which is typically undesired.
+#Included on report
 
 ####Question 2.b####
 
@@ -111,73 +109,46 @@ print("Experiment 2")
 
 x4clust=x.std
 
+#Changing the names of players for an id
 row.names(x4clust)=1:n
 
 hc.x = hclust(dist(x4clust), method = "complete")
 
-plot(hc.x, main = "Complete Linkage", xlab = "", sub = "", 
-     cex = 0.35)
+#Subset of labels
+labs=hc.x$order[seq(1,n,3)]
 
-toPlot <- hc.x$order[seq(1,n,3)]
+#Use ids as labels
+ids=rownames(x4clust)
+#Eliminating labels not present in our selection
+ids[ !(ids %in% labs) ] = ""
 
-## use rownames as labels
-labels <- rownames(x4clust)
-## clear labels not present in toPlot
-labels[ !(labels %in% toPlot) ] <- ""
-
-
+plot(hc.x,main = "Complete Linkage", cex = 0.5,labels=ids,xlab="Index of Player",sub="",hang = -1)
 
 
-
-plot(hc.x,main = "Complete Linkage", cex = 0.5,labels=labels,xlab="Index of Player",sub="",hang=-1)
-
-plot(hc.x, hang=-1,cex=0.3)
-
-dhc <- as.dendrogram(hc.x)
-# Rectangular lines
-ddata <- dendro_data(dhc, type = "rectangle")
-p <- ggplot(segment(ddata)) + 
-  geom_segment()
-  #coord_flip()+ scale_y_reverse(expand = c(0.2, 0))
-
-ggdendrogram(hc.x, rotate = FALSE, size = 2,)
-
-
-plot_dendro(dhc,height = 1600, width = 800) %>% 
-  hide_legend() %>% 
-  highlight(persistent = TRUE, dynamic = TRUE)
-
-
-
-ptest <- ggplot(dhc, horiz = FALSE, theme = NULL)
-plotly_build(ptest)
-
-
-fviz_dend(hc.x,repel=FALSE,cex = 0.5, k = 2, color_labels_by_k = TRUE)
-
-
+#Cutting at a height for two clusters
 hc2=cutree(hc.x, 2)
 
-lab=ifelse(hc2==1,"1","2")
-
-ggdf1=data.frame(CRuns=x.std[,11],CRBI=x.std[,12],Cluster=lab)
-
-ggplot(data=ggdf1,aes(x=CRuns,y=CRBI,color=Cluster))+geom_point()
-
-ggdf2=data.frame(CAtBat=x.std[,8],CHits=x.std[,9],Cluster=lab)
-
-ggplot(data=ggdf2,aes(x=CAtBat,y=CHits,color=Cluster))+geom_point()
-
-#Indeces of cluster 1
+#Indexes of cluster 1
 c1.hc=which(hc2==1)
 
-apply(x[c1.hc,],2,mean)
-apply(x[-c1.hc,],2,mean)
+#Mean of variables and salaries by cluster
+df.means=data.frame(C1=apply(x[c1.hc,],2,mean),C2=apply(x[-c1.hc,],2,mean))
 
-#Mean of salaries by cluster
-mean(y[c1.hc])
-mean(y[-c1.hc])
+df.Sal=data.frame(C1=mean(y[c1.hc]),C2=mean(y[-c1.hc]))
+row.names(df.Sal)="Salary"
 
+rbind(df.means,df.Sal)[-c(14,15,19),]
+
+#Some Clusters Visualization
+lab=ifelse(hc2==1,"1","2")
+
+ggdf1=data.frame(CRuns=x.std[,11],Salary=y,Cluster=lab)
+
+ggplot(data=ggdf1,aes(x=CRuns,y=Salary,color=Cluster))+geom_point()
+
+ggdf2=data.frame(CHits=x.std[,8],Salary=y,Cluster=lab)
+
+ggplot(data=ggdf2,aes(x=CHits,y=Salary,color=Cluster))+geom_point()
 
 
 ####Question 2.d####
