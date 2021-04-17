@@ -131,24 +131,32 @@ hc2=cutree(hc.x, 2)
 #Indexes of cluster 1
 c1.hc=which(hc2==1)
 
+#Withinss
+# wss1=sum(diag(var(x.std[c1.hc,]))*(nrow(x.std[c1.hc,])-1))
+# wss2=sum(diag(var(x.std[-c1.hc,]))*(nrow(x.std[-c1.hc,])-1))
+
+#Totwithinss
+# wss1+wss2
+
 #Mean of variables and salaries by cluster
 df.means=data.frame(C1=apply(x[c1.hc,],2,mean),C2=apply(x[-c1.hc,],2,mean))
 
 df.Sal=data.frame(C1=mean(y[c1.hc]),C2=mean(y[-c1.hc]))
 row.names(df.Sal)="Salary"
 
+#Displaying quantitative variables only
 rbind(df.means,df.Sal)[-c(14,15,19),]
 
 #Some Clusters Visualization
 lab=ifelse(hc2==1,"1","2")
 
-ggdf1=data.frame(CRuns=x.std[,11],Salary=y,Cluster=lab)
-
+#Salary vs CRuns
+ggdf1=data.frame(CRuns=Hitters$CRuns,Salary=Hitters$Salary,Cluster=lab)
 ggplot(data=ggdf1,aes(x=CRuns,y=Salary,color=Cluster))+geom_point()
 
-ggdf2=data.frame(CHits=x.std[,8],Salary=y,Cluster=lab)
-
-ggplot(data=ggdf2,aes(x=CHits,y=Salary,color=Cluster))+geom_point()
+#Salary vs CRBI
+ggdf2=data.frame(CRBI=Hitters$CRBI,Salary=Hitters$Salary,Cluster=lab)
+ggplot(data=ggdf2,aes(x=CRBI,y=Salary,color=Cluster))+geom_point()
 
 
 ####Question 2.d####
@@ -163,33 +171,42 @@ km2$centers
 #Indexes of cluster 1
 c1.km=which(km2$cluster==1)
 
-apply(x[km2$cluster==1,],2,mean)
-apply(x[km2$cluster==2,],2,mean)
-
-
 #Mean of salaries by cluster
 mean(y[c1.km])
 mean(y[-c1.km])
 
 
-km2$withinss
-km2$tot.withinss
-km2$totss
-km2$betweenss
-sum(diag(var(x))*(nrow(x)-1))
+# km2$withinss
+# km2$tot.withinss
+# km2$totss
+# km2$betweenss
+# sum(diag(var(x.std))*(nrow(x)-1))
+# km2$betweenss/km2$totss
+
+#Mean of variables by cluster
+df.meansK=data.frame(C1=apply(x[c1.km,],2,mean),C2=apply(x[-c1.km,],2,mean))
+
+#Mean of salaries by cluster
+df.SalK=data.frame(C1=mean(y[c1.km]),C2=mean(y[-c1.km]))
+row.names(df.SalK)="Salary"
+
+#Displaying quantitative variables only
+rbind(df.meansK,df.SalK)[-c(14,15,19),]
 
 
-km2$betweenss/km2$totss
+
+
+#Some Clusters Visualization
+lab=ifelse(hc2==1,"1","2")
 labkm=ifelse(km2$cluster==1,"1","2")
 
-ggdf1=data.frame(CRuns=x.std[,11],CRBI=x.std[,12],Cluster=labkm)
+#Salary vs CRuns
+ggdf3=data.frame(CRuns=Hitters$CRuns,Salary=Hitters$Salary,Cluster=labkm)
+ggplot(data=ggdf3,aes(x=CRUNS,y=Salary,color=Cluster))+geom_point()
 
-ggplot(data=ggdf1,aes(x=CRuns,y=CRBI,color=Cluster))+geom_point()
-
-ggdf2=data.frame(CAtBat=x.std[,8],CHits=x.std[,9],Cluster=labkm)
-
-ggplot(data=ggdf2,aes(x=CAtBat,y=CHits,color=Cluster))+geom_point()
-
+#Salary vs CRBI
+ggdf4=data.frame(CRBI=Hitters$CRBI,Salary=Hitters$Salary,Cluster=labkm)
+ggplot(data=ggdf4,aes(x=CRBI,y=Salary,color=Cluster))+geom_point()
 
 
 
@@ -197,7 +214,8 @@ ggplot(data=ggdf2,aes(x=CAtBat,y=CHits,color=Cluster))+geom_point()
 print("Experiment 3")
 
 #Dataframe to track errors of each model
-error.df=data.frame(Full=0,PCR=0,PLS=0,RidgeReg=0)
+error.df=data.frame(MSE=rep(0,4))
+row.names(error.df)=c("Full","PCR","PLS","RidgeReg")
 
 ####Question 3.a####
 
@@ -227,19 +245,22 @@ m_fullloocv = train(log(Salary)~.,
                     trControl = control)
 
 #Estimated MSE
-error.df$Full=m_fullloocv$results$RMSE^2
+error.df["Full","MSE"]=m_fullloocv$results$RMSE^2
 
 ####Question 3.b####
 pcr.fit=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
 
-summary(pcr.fit)
+
+df.msep1=data.frame(Components=0:19,MSEP=MSEP(pcr.fit)$val[1, 1,])
+
 
 #Validation Plot
-ggplot(data.frame(Components=0:19,MSEP=MSEP(pcr.fit)$val[1, 1,]),
-       aes(x=Components,y=MSEP))+geom_line()+geom_point()
+val1=ggplot(df.msep1, aes(x=Components,y=MSEP))+geom_line()+geom_point()
 
 M_pcr=which.min(MSEP(pcr.fit)$val[1, 1,])
-error.df$PCR=MSEP(pcr.fit)$val[1, 1,M_pcr]
+error.df["PCR","MSE"]=MSEP(pcr.fit)$val[1, 1,M_pcr]
+
+val1+geom_point(data=df.msep1[M_pcr,],colour="red")
 
 pcr.fitBest=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO",ncomp=M_pcr-1)
 summary(pcr.fitBest)
@@ -249,11 +270,15 @@ summary(pcr.fitBest)
 pls.fit=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
 
 #Validation Plot
-ggplot(data.frame(Components=0:19,MSEP=MSEP(pls.fit)$val[1, 1,]),
-       aes(x=Components,y=MSEP))+geom_line()+geom_point()
+df.msep2=data.frame(Components=0:19,MSEP=MSEP(pls.fit)$val[1, 1,])
+val2=ggplot(df.msep,aes(x=Components,y=MSEP))+geom_line()+geom_point()
 
+#Optimal M
 M_pls=which.min(MSEP(pls.fit)$val[1, 1,])
-error.df$PLS=MSEP(pls.fit)$val[1, 1,M_pls]
+val2+geom_point(data=df.msep2[M_pls,],colour="red")
+
+
+error.df["PLS","MSE"]=MSEP(pls.fit)$val[1, 1,M_pls]
 
 pls.fitBest=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO",ncomp=M_pls-1)
 summary(pls.fitBest)
@@ -287,4 +312,8 @@ g.ridge = ggplot(tidy_cv, aes(lambda, estimate))+
 print(g.ridge)
 
 #Estimated MSE
-error.df$RidgeReg=min(cv.ridge$cvm)
+error.df["RidgeReg","MSE"]=min(cv.ridge$cvm)
+
+####Question 3.e####
+
+print(error.df)
