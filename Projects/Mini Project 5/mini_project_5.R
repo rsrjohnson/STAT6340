@@ -27,8 +27,8 @@ summary(Hitters[,-c(14,15,19,20)])
 
 df.stats=data.frame(Mean=apply(Hitters[,-c(14,15,19,20)], 2, mean),
                     SD=apply(Hitters[,-c(14,15,19,20)], 2, sd))
-#Different scales observed, standardizing the data is recommended
 
+#Different scales observed, standardizing the data is recommended
 print(df.stats)
 
 ####Question 1.b####
@@ -66,6 +66,7 @@ print(g_cum)
 #Correlations of quantitative variables and the first two principal components
 df_corr=data.frame(PC1=pca_x$rotation[-c(14,15,19),1]*pca_x$sdev[1],
                    PC2=pca_x$rotation[-c(14,15,19),2]*pca_x$sdev[2])
+print(df_corr)
 
 #Scores
 head(pca_x$x[,1:2])
@@ -123,7 +124,7 @@ df.means.std=data.frame(C1.std=apply(x.std[c1.hc,],2,mean),C2.std=apply(x.std[-c
 df.means=data.frame(C1=apply(x[c1.hc,],2,mean),C2=apply(x[-c1.hc,],2,mean))
 
 #Mean of Salary by cluster
-df.Sal.std=data.frame(C1.std=mean(scale(y[c1.hc])),C2.std=mean(scale(y[-c1.hc])))
+df.Sal.std=data.frame(C1.std=mean(scale(y)[c1.hc]),C2.std=mean(scale(y)[-c1.hc]))
 row.names(df.Sal.std)="Salary"
 
 #Mean of Salary by cluster
@@ -138,11 +139,21 @@ lab=ifelse(hc2==1,"1","2")
 
 #Salary vs CRuns
 ggdf1=data.frame(CRuns=Hitters$CRuns,Salary=Hitters$Salary,Cluster=lab)
-ggplot(data=ggdf1,aes(x=CRuns,y=Salary,color=Cluster))+geom_point()
+print(ggplot(data=ggdf1,aes(x=CRuns,y=Salary,color=Cluster))+geom_point()+
+        geom_point(data=data.frame(CRuns=c(df.means["CRuns","C1"],
+                                           df.means["CRuns","C2"]),
+                                   Salary=c(df.Sal$C1,df.Sal$C2),
+                                   Cluster=c("1","2")),
+                   colour=c("red","blue"),size=3,shape=8))
 
 #Salary vs CRBI
 ggdf2=data.frame(CRBI=Hitters$CRBI,Salary=Hitters$Salary,Cluster=lab)
-ggplot(data=ggdf2,aes(x=CRBI,y=Salary,color=Cluster))+geom_point()
+print(ggplot(data=ggdf2,aes(x=CRBI,y=Salary,color=Cluster))+geom_point()+
+        geom_point(data=data.frame(CRBI=c(df.means["CRBI","C1"],
+                                           df.means["CRBI","C2"]),
+                                   Salary=c(df.Sal$C1,df.Sal$C2),
+                                   Cluster=c("1","2")),
+                   colour=c("red","blue"),size=3,shape=8))
 
 
 ####Question 2.d####
@@ -164,7 +175,7 @@ df.means.stdK=data.frame(C1.std=km2$centers[1,],C2.std=km2$centers[2,])
 df.meansK=data.frame(C1=apply(x[c1.km,],2,mean),C2=apply(x[-c1.km,],2,mean))
 
 #Mean of Salary by cluster
-df.Sal.stdK=data.frame(C1.std=mean(scale(y[c1.km])),C2.std=mean(scale(y[-c1.km])))
+df.Sal.stdK=data.frame(C1.std=mean(scale(y)[c1.km]),C2.std=mean(scale(y)[-c1.km]))
 row.names(df.Sal.std)="Salary"
 
 #Mean of salaries by cluster
@@ -179,14 +190,27 @@ print(cbind(rbind(df.meansK,df.SalK),rbind(df.means.stdK,df.Sal.stdK))[-c(14,15,
 lab=ifelse(hc2==1,"1","2")
 labkm=ifelse(km2$cluster==1,"1","2")
 
+
+
 #Salary vs CRuns
 ggdf3=data.frame(CRuns=Hitters$CRuns,Salary=Hitters$Salary,Cluster=labkm)
-ggplot(data=ggdf3,aes(x=CRUNS,y=Salary,color=Cluster))+geom_point()
+print(ggplot(data=ggdf3,aes(x=CRuns,y=Salary,color=Cluster))+geom_point()+
+        geom_point(data=data.frame(CRuns=c(df.meansK["CRuns","C1"],
+                                          df.meansK["CRuns","C2"]),
+                                   Salary=c(df.SalK$C1,df.SalK$C2),
+                                   Cluster=c("1","2")),
+                   colour=c("red","blue"),size=3,shape=8))
+        
 
+dfK=
 #Salary vs CRBI
 ggdf4=data.frame(CRBI=Hitters$CRBI,Salary=Hitters$Salary,Cluster=labkm)
-ggplot(data=ggdf4,aes(x=CRBI,y=Salary,color=Cluster))+geom_point()
-
+print(ggplot(data=ggdf4,aes(x=CRBI,y=Salary,color=Cluster))+geom_point()+
+        geom_point(data=data.frame(CRBI=c(df.meansK["CRBI","C1"],
+                                          df.meansK["CRBI","C2"]),
+                                   Salary=c(df.SalK$C1,df.SalK$C2),
+                                   Cluster=c("1","2")),
+                   colour=c("red","blue"),size=3,shape=8))
 
 
 #Experiment 3
@@ -211,7 +235,8 @@ m_fullloocv = train(log(Salary)~.,
 error.df["Full","MSE"]=m_fullloocv$results$RMSE^2
 
 ####Question 3.b####
-pcr.fit=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
+pcr.fit=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, center=TRUE,
+            validation = "LOO")
 
 #Dataframe to create validation plot
 df.msep1=data.frame(Components=0:19,MSEP=MSEP(pcr.fit)$val[1, 1,])
@@ -227,11 +252,13 @@ print(val1+geom_point(data=df.msep1[M_pcr,],colour="red"))
 error.df["PCR","MSE"]=MSEP(pcr.fit)$val[1, 1,M_pcr]
 
 #Best Model 16 Components
-pcr.fitBest=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO",ncomp=M_pcr-1)
+pcr.fitBest=pcr(log(Salary) ~ ., data = Hitters,scale = TRUE, center=TRUE,
+                validation = "LOO",ncomp=M_pcr-1)
 summary(pcr.fitBest)
 
 ####Question 3.c####
-pls.fit=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO")
+pls.fit=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, center=TRUE,
+             validation = "LOO")
 
 #Dataframe to create validation plot
 df.msep2=data.frame(Components=0:19,MSEP=MSEP(pls.fit)$val[1, 1,])
@@ -247,7 +274,8 @@ print(val2+geom_point(data=df.msep2[M_pls,],colour="red"))
 error.df["PLS","MSE"]=MSEP(pls.fit)$val[1, 1,M_pls]
 
 #Best Model 12 Components
-pls.fitBest=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, validation = "LOO",ncomp=M_pls-1)
+pls.fitBest=plsr(log(Salary) ~ ., data = Hitters,scale = TRUE, center=TRUE, 
+                 validation = "LOO",ncomp=M_pls-1)
 summary(pls.fitBest)
 
 
