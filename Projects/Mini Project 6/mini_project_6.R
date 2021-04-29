@@ -8,9 +8,9 @@ library(pls) #Used for PCR and PLS
 library(ISLR) #Library for the data
 
 library(tree)
-#library(rpart)
 library(randomForest)
 library(gbm)
+library(e1071)
 
 rdseed=8466 #Seed to replicate results
 
@@ -177,3 +177,87 @@ names(diabetes)=c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
 
 #Converting Outcome to factor
 diabetes$Outcome=as.factor(diabetes$Outcome)
+
+nobs=nrow(diabetes)
+
+class.error=data.frame(Error=rep(0,3))
+row.names(class.error)=c("SVC","SVMP","SVMR")
+
+
+costs=list(cost = c(0.001, 0.01, 0.1, 1, 5, 10))
+gamma_val=c(0.5, 1, 2, 3, 4)
+kfold=10
+
+####Question 2.a####
+
+set.seed(rdseed)
+best.svc=tune(svm, Outcome ~ ., data = diabetes, kernel = "linear", 
+              ranges = costs, scale = TRUE)
+
+bestmod = best.svc$best.model
+summary(bestmod)
+
+best_cost=bestmod$cost
+
+svc.errors=sapply(1:nobs, function(i){
+  
+  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "linear", cost = best_cost, scale = TRUE)
+  
+  ti.pred= predict(ti, diabetes[i,])
+  
+  (ti.pred!=diabetes$Outcome[i])
+})
+
+
+class.error["SVC","Error"]=mean(svc.errors)
+
+
+####Question 2.b####
+
+set.seed(rdseed)
+best.svm2=tune(svm, Outcome ~ ., data = diabetes, kernel = "polynomial", degree=2, 
+              ranges = costs, scale = TRUE)
+
+bestmod2 = best.svm2$best.model
+summary(bestmod2)
+
+best_cost2=bestmod2$cost
+
+svm.errors2=sapply(1:nobs, function(i){
+  
+  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
+          cost=best_cost2, scale = TRUE)
+  
+  ti.pred= predict(ti, diabetes[i,])
+  
+  (ti.pred!=diabetes$Outcome[i])
+})
+
+
+class.error["SVMP","Error"]=mean(svm.errors2)
+
+
+####Question 2.c####
+
+set.seed(rdseed)
+best.svmr=tune(svm, Outcome ~ ., data = diabetes, kernel = "radial", 
+               ranges = costs, gamma=gamma_val,scale = TRUE)
+
+bestmodr = best.svmr$best.model
+summary(bestmodr)
+
+best_costr=bestmodr$cost
+best_gam=bestmodr$gamma
+
+svm.errorsr=sapply(1:nobs, function(i){
+  
+  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "radial",
+          cost=best_costr, gamma=best_gam, scale = TRUE)
+  
+  ti.pred= predict(ti, diabetes[i,])
+  
+  (ti.pred!=diabetes$Outcome[i])
+})
+
+
+class.error["SVMR","Error"]=mean(svm.errorsr)
