@@ -198,8 +198,8 @@ row.names(class.error)=c("SVC","SVMP","SVMR")
 #costs=cost = seq(0.1,20, by = 1)
 #gamma_val=seq(.01, 10, by = .1)
 
-costs=c(0.1, c(1:10))
-gamma_val=c(0.5, 1, 2, 3, 4)
+costs=c(0.1, c(1:20))
+gamma_val=c(0.1,0.5, 1, 2, 3, 4,5)
 
 kfold=10
 
@@ -231,17 +231,17 @@ best_cost=bestmod$cost
 
 
 
-svc.errors=sapply(1:nobs, function(i){
-  
-  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "linear", cost = best_cost, scale = FALSE)
-  
-  ti.pred= predict(ti, diabetes[i,])
-  
-  (ti.pred!=diabetes$Outcome[i])
-})
+# svc.errors=sapply(1:nobs, function(i){
+#   
+#   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "linear", cost = best_cost, scale = FALSE)
+#   
+#   ti.pred= predict(ti, diabetes[i,])
+#   
+#   (ti.pred!=diabetes$Outcome[i])
+# })
 
 
-class.error["SVC","Error"]=mean(svc.errors)
+class.error["SVC","Error"]=svc.tune$best.performance
 
 
 ####Question 2.b####
@@ -255,20 +255,20 @@ summary(bestmod2)
 
 best_cost2=bestmod2$cost
 
-kf.resid=kf.tst[,fitPred(diabetes[-idx,],diabetes[idx,],idx,best_cost2),by=.(i)]
+#kf.resid=kf.tst[,fitPred(diabetes[-idx,],diabetes[idx,],idx,best_cost2),by=.(i)]
 
-svm.errors2=sapply(1:nobs, function(i){
-  
-  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
-          cost=best_cost2, scale = FALSE)
-  
-  ti.pred= predict(ti, diabetes[i,])
-  
-  (ti.pred!=diabetes$Outcome[i])
-})
+# svm.errors2=sapply(1:nobs, function(i){
+#   
+#   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
+#           cost=best_cost2, scale = FALSE)
+#   
+#   ti.pred= predict(ti, diabetes[i,])
+#   
+#   (ti.pred!=diabetes$Outcome[i])
+# })
 
 
-class.error["SVMP","Error"]=mean(svm.errors2)
+class.error["SVMP","Error"]=svm2.tune$best.performance
 
 
 ####Question 2.c####
@@ -283,15 +283,15 @@ summary(bestmodr)
 best_costr=bestmodr$cost
 best_gam=bestmodr$gamma
 
-svm.errorsr=sapply(1:nobs, function(i){
-  
-  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "radial",
-          cost=best_costr, gamma=best_gam, scale = FALSE)
-  
-  ti.pred= predict(ti, diabetes[i,])
-  
-  (ti.pred!=diabetes$Outcome[i])
-})
+# svm.errorsr=sapply(1:nobs, function(i){
+#   
+#   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "radial",
+#           cost=best_costr, gamma=best_gam, scale = FALSE)
+#   
+#   ti.pred= predict(ti, diabetes[i,])
+#   
+#   (ti.pred!=diabetes$Outcome[i])
+# })
 
 
-class.error["SVMR","Error"]=mean(svm.errorsr)
+class.error["SVMR","Error"]=svmr.tune$best.performance
