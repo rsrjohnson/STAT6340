@@ -11,6 +11,7 @@ library(tree)
 library(randomForest)
 library(gbm)
 library(e1071)
+library(data.table)
 
 rdseed=8466 #Seed to replicate results
 
@@ -28,7 +29,7 @@ p=ncol(Hitters)-1
 #Number of bootstrap samples
 B=1000
 
-#Dataframe with log(Salary)
+#Creating dataframe with log(Salary)
 new_hit=Hitters
 new_hit$logSal=log(Hitters$Salary)
 new_hit$Salary=NULL
@@ -167,6 +168,8 @@ error.df["Boosting","MSE"]=mean(boost.errors)
 #Experiment 2
 print("Experiment 2")
 
+#Small cost = more tolerant of margin violations = wide margin = more budget
+
 #Reading the data
 diabetes = read.csv("diabetes.csv")
 
@@ -178,30 +181,59 @@ names(diabetes)=c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
 #Converting Outcome to factor
 diabetes$Outcome=as.factor(diabetes$Outcome)
 
+#Standardizing predictors
+#diabetes[,1:8]=scale(diabetes[,1:8])
+
+#Number of observations
 nobs=nrow(diabetes)
 
+#Dataframe to track errors of each model
 class.error=data.frame(Error=rep(0,3))
 row.names(class.error)=c("SVC","SVMP","SVMR")
 
 
-costs=list(cost = c(0.001, 0.01, 0.1, 1, 5, 10))
+#costs=c(0.001, 0.01, 0.1, c(1:10))
+#gamma_val=c(0.1,0.5, 1, 2, 3, 4,5)
+
+#costs=cost = seq(0.1,20, by = 1)
+#gamma_val=seq(.01, 10, by = .1)
+
+costs=c(0.1, c(1:10))
 gamma_val=c(0.5, 1, 2, 3, 4)
+
 kfold=10
+
+t = rep(1:kfold,ceiling(nobs/kfold))[1:nobs]  
+set.seed(rdseed)
+kf.tst=data.table(i=t ,idx=sample(nobs))
+
+fitPred=function(trn,tst,i, bestcost) {
+  
+  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
+          cost=bestcost, scale = FALSE)
+  
+  ti.pred= predict(ti, diabetes[i,])
+  
+  (data.table(loc=i,diff=ti.pred!=diabetes$Outcome[i]))
+}
 
 ####Question 2.a####
 
 set.seed(rdseed)
-best.svc=tune(svm, Outcome ~ ., data = diabetes, kernel = "linear", 
-              ranges = costs, scale = TRUE)
+svc.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "linear", 
+              ranges = list(cost=costs),scale=TRUE)
 
-bestmod = best.svc$best.model
+bestmod = svc.tune$best.model
 summary(bestmod)
 
 best_cost=bestmod$cost
 
+
+
+
 svc.errors=sapply(1:nobs, function(i){
   
-  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "linear", cost = best_cost, scale = TRUE)
+  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "linear", cost = best_cost, scale = FALSE)
   
   ti.pred= predict(ti, diabetes[i,])
   
@@ -215,18 +247,20 @@ class.error["SVC","Error"]=mean(svc.errors)
 ####Question 2.b####
 
 set.seed(rdseed)
-best.svm2=tune(svm, Outcome ~ ., data = diabetes, kernel = "polynomial", degree=2, 
-              ranges = costs, scale = TRUE)
+svm2.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "polynomial", degree=2, 
+              ranges = list(cost=costs),scale=TRUE)
 
-bestmod2 = best.svm2$best.model
+bestmod2 = svm2.tune$best.model
 summary(bestmod2)
 
 best_cost2=bestmod2$cost
 
+kf.resid=kf.tst[,fitPred(diabetes[-idx,],diabetes[idx,],idx,best_cost2),by=.(i)]
+
 svm.errors2=sapply(1:nobs, function(i){
   
   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
-          cost=best_cost2, scale = TRUE)
+          cost=best_cost2, scale = FALSE)
   
   ti.pred= predict(ti, diabetes[i,])
   
@@ -240,10 +274,10 @@ class.error["SVMP","Error"]=mean(svm.errors2)
 ####Question 2.c####
 
 set.seed(rdseed)
-best.svmr=tune(svm, Outcome ~ ., data = diabetes, kernel = "radial", 
-               ranges = costs, gamma=gamma_val,scale = TRUE)
+svmr.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "radial", 
+               ranges = list(cost=costs, gamma=gamma_val),scale=TRUE)
 
-bestmodr = best.svmr$best.model
+bestmodr = svmr.tune$best.model
 summary(bestmodr)
 
 best_costr=bestmodr$cost
@@ -252,7 +286,7 @@ best_gam=bestmodr$gamma
 svm.errorsr=sapply(1:nobs, function(i){
   
   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "radial",
-          cost=best_costr, gamma=best_gam, scale = TRUE)
+          cost=best_costr, gamma=best_gam, scale = FALSE)
   
   ti.pred= predict(ti, diabetes[i,])
   
