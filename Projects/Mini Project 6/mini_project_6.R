@@ -2,9 +2,9 @@
 library(ggplot2) #Used for graphics and visual representations
 library(ggfortify)  #Used to generate biplot ggplot object 
 library(caret) #Used to handle LOOCV training
-library(glmnet) #Use for Ridge Regression
+
 library(broom) #To create tidy objects for ggplot visualization
-library(pls) #Used for PCR and PLS
+
 library(ISLR) #Library for the data
 
 library(tree)
@@ -46,9 +46,12 @@ hitree=tree(logSal ~ ., new_hit)
 
 summary(hitree)
 
+#Regions
+print(hitree)
+
+#Visualizing the tree 
 plot(hitree)
 text(hitree, pretty = 0)
-
 
 #LOOCV to estimate MSE
 hit.errors=sapply(1:n, function(i){
@@ -61,13 +64,9 @@ hit.errors=sapply(1:n, function(i){
 })
 
 #Estimated MSE
-
 error.df["DT","MSE"]=mean(hit.errors)
 
 print(mean(hit.errors))
-
-
-#Desciber regions to be done
 
 ####Question 1.b####
 
@@ -78,7 +77,9 @@ cv.hitree = cv.tree(hitree, K=n)
 best_size=which.min(cv.hitree$size)
 
 #Plotting Test MSE vs Size
-plot(cv.hitree$size, cv.hitree$dev/n, type = "b")
+ggplot(data.frame(Tree_Size = cv.hitree$size, MSE= cv.hitree$dev/n ),aes(x=Tree_Size, y=MSE))+
+  geom_line()+geom_point(color="red")+scale_x_continuous(breaks=1:9)
+
 
 
 #Since the unpruned tree is the best we have the same test MSE as before.
@@ -86,25 +87,19 @@ print(mean(hit.errors))
 min(cv.hitree$dev)/n
 
 
-prune.hit <- prune.tree(hitree, best = best_size)
-plot(prune.hit)
-text(prune.hit, pretty = 0)
-
-#Predictors importance to be done
-
-
-
 ####Question 1.c####
 set.seed(rdseed)
 bag.hit<- randomForest(logSal ~ ., data = new_hit, 
                            mtry = p, ntree = B, importance = TRUE)
-bag.hit
 
+print(bag.hit$importance)
+
+varImpPlot(bag.hit, main="Bagging Predictor Importance")
 
 bag.errors=sapply(1:n, function(i){
   
   ti = bag.hit<- randomForest(logSal ~ ., data = new_hit[-i,], 
-                              mtry = p, ntree = B, importance = TRUE)
+                              mtry = p, ntree = B)
   
   ti.pred= predict(ti, new_hit[i,])
   
@@ -121,8 +116,10 @@ m=round(p/3)
 set.seed(rdseed)
 rf.hit <- randomForest(logSal ~ ., data = new_hit, 
                         mtry = m, ntree = B, importance = TRUE)
-rf.hit
 
+print(rf.hit$importance)
+
+varImpPlot(rf.hit, main="Random Forest Predictor Importance")
 
 rf.errors=sapply(1:n, function(i){
   
@@ -147,6 +144,9 @@ boost.hit <- gbm(logSal ~ ., data = new_hit, distribution = "gaussian",
                     n.trees = B, interaction.depth = d,shrinkage = lambda)
 summary(boost.hit)
 
+
+
+
 par(mfrow = c(1, 2))
 plot(boost.hit, i = "CAtBat")
 plot(boost.hit, i = "CRuns")
@@ -163,6 +163,10 @@ boost.errors=sapply(1:n, function(i){
 
 
 error.df["Boosting","MSE"]=mean(boost.errors)
+
+####Question 1.e####
+
+print(error.df)
 
 
 #Experiment 2
@@ -198,7 +202,7 @@ row.names(class.error)=c("SVC","SVMP","SVMR")
 #costs=cost = seq(0.1,20, by = 1)
 #gamma_val=seq(.01, 10, by = .1)
 
-costs=c(0.1, c(1:20))
+costs=c(0.1, c(1:10),100)
 gamma_val=c(0.1,0.5, 1, 2, 3, 4,5)
 
 kfold=10
