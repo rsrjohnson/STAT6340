@@ -1,16 +1,10 @@
 #Packages
 library(ggplot2) #Used for graphics and visual representations
-library(ggfortify)  #Used to generate biplot ggplot object 
-library(caret) #Used to handle LOOCV training
 
-library(broom) #To create tidy objects for ggplot visualization
-
-library(ISLR) #Library for the data
-
-library(tree)
-library(randomForest)
-library(gbm)
-library(e1071)
+library(tree) #Used for decision trees
+library(randomForest) #Used for bagging and random forest
+library(gbm) #Used for boosting
+library(e1071) #Used for hyperparameter tuning
 library(data.table)
 
 rdseed=8466 #Seed to replicate results
@@ -47,7 +41,7 @@ hitree=tree(logSal ~ ., new_hit)
 summary(hitree)
 
 #Regions
-print(hitree)
+hitree
 
 #Visualizing the tree 
 plot(hitree)
@@ -70,7 +64,7 @@ print(mean(hit.errors))
 
 ####Question 1.b####
 
-#Using LOOCV(K=n) to find values of several prunings
+#Using LOOCV(K=n) to find performance of the pruned trees
 cv.hitree = cv.tree(hitree, K=n)
 
 #Best Size = 9, pruning does not help
@@ -84,18 +78,21 @@ ggplot(data.frame(Tree_Size = cv.hitree$size, MSE= cv.hitree$dev/n ),aes(x=Tree_
 
 #Since the unpruned tree is the best we have the same test MSE as before.
 print(mean(hit.errors))
-min(cv.hitree$dev)/n
 
 
 ####Question 1.c####
+
+#Fitting a bagging model
 set.seed(rdseed)
 bag.hit<- randomForest(logSal ~ ., data = new_hit, 
                            mtry = p, ntree = B, importance = TRUE)
 
+#Importance of predictors
 print(bag.hit$importance)
-
 varImpPlot(bag.hit, main="Bagging Predictor Importance")
+#Career predictors like CAtBat, CRuns, CRBI and CHits are the most important
 
+#LOOCV to estimate MSE
 bag.errors=sapply(1:n, function(i){
   
   ti = bag.hit<- randomForest(logSal ~ ., data = new_hit[-i,], 
@@ -108,19 +105,24 @@ bag.errors=sapply(1:n, function(i){
 
 error.df["Bagging","MSE"]=mean(bag.errors)
 
+print(mean(bag.errors))
 
 ####Question 1.d####
 
+#Number of predictors sampled per tree
 m=round(p/3)
 
+#Fitting a random forest model
 set.seed(rdseed)
 rf.hit <- randomForest(logSal ~ ., data = new_hit, 
                         mtry = m, ntree = B, importance = TRUE)
 
+#Importance of predictors
 print(rf.hit$importance)
-
 varImpPlot(rf.hit, main="Random Forest Predictor Importance")
+#Career predictors are the most important predictors
 
+#LOOCV to estimate MSE
 rf.errors=sapply(1:n, function(i){
   
   ti = randomForest(logSal ~ ., data = new_hit[-i,], 
@@ -133,9 +135,14 @@ rf.errors=sapply(1:n, function(i){
 
 error.df["RF","MSE"]=mean(rf.errors)
 
+print(rf.errors)
+
 ####Question 1.e####
 
+#Depth of the trees
 d=1
+
+#Shrinkage value
 lambda=0.01
 
 
@@ -144,13 +151,12 @@ boost.hit <- gbm(logSal ~ ., data = new_hit, distribution = "gaussian",
                     n.trees = B, interaction.depth = d,shrinkage = lambda)
 summary(boost.hit)
 
-
-
-
+#Visualizing the effect of some predictors
 par(mfrow = c(1, 2))
 plot(boost.hit, i = "CAtBat")
 plot(boost.hit, i = "CRuns")
 
+#LOOCV to estimate MSE
 boost.errors=sapply(1:n, function(i){
   
   boost.i=gbm(logSal ~ ., data = new_hit[-i,], distribution = "gaussian", 
@@ -163,6 +169,7 @@ boost.errors=sapply(1:n, function(i){
 
 
 error.df["Boosting","MSE"]=mean(boost.errors)
+print(mean(boost.errors))
 
 ####Question 1.e####
 
@@ -171,8 +178,6 @@ print(error.df)
 
 #Experiment 2
 print("Experiment 2")
-
-#Small cost = more tolerant of margin violations = wide margin = more budget
 
 #Reading the data
 diabetes = read.csv("diabetes.csv")
@@ -185,8 +190,6 @@ names(diabetes)=c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
 #Converting Outcome to factor
 diabetes$Outcome=as.factor(diabetes$Outcome)
 
-#Standardizing predictors
-#diabetes[,1:8]=scale(diabetes[,1:8])
 
 #Number of observations
 nobs=nrow(diabetes)
@@ -195,107 +198,62 @@ nobs=nrow(diabetes)
 class.error=data.frame(Error=rep(0,3))
 row.names(class.error)=c("SVC","SVMP","SVMR")
 
-
-#costs=c(0.001, 0.01, 0.1, c(1:10))
-#gamma_val=c(0.1,0.5, 1, 2, 3, 4,5)
-
-#costs=cost = seq(0.1,20, by = 1)
-#gamma_val=seq(.01, 10, by = .1)
-
-costs=c(0.1, c(1:10),100)
+#Hyperparameters for the svm models
+costs=c(0.001, 0.01, 0.1, c(1:10),100)
 gamma_val=c(0.1,0.5, 1, 2, 3, 4,5)
 
-kfold=10
-
-t = rep(1:kfold,ceiling(nobs/kfold))[1:nobs]  
-set.seed(rdseed)
-kf.tst=data.table(i=t ,idx=sample(nobs))
-
-fitPred=function(trn,tst,i, bestcost) {
-  
-  ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
-          cost=bestcost, scale = FALSE)
-  
-  ti.pred= predict(ti, diabetes[i,])
-  
-  (data.table(loc=i,diff=ti.pred!=diabetes$Outcome[i]))
-}
 
 ####Question 2.a####
 
+#Tuning a support vector classifier
 set.seed(rdseed)
 svc.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "linear", 
               ranges = list(cost=costs),scale=TRUE)
 
+#Best model cost = 1
 bestmod = svc.tune$best.model
 summary(bestmod)
-
-best_cost=bestmod$cost
-
+print(bestmod$cost)
 
 
-
-# svc.errors=sapply(1:nobs, function(i){
-#   
-#   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "linear", cost = best_cost, scale = FALSE)
-#   
-#   ti.pred= predict(ti, diabetes[i,])
-#   
-#   (ti.pred!=diabetes$Outcome[i])
-# })
-
-
+#Estimated Error Rate
 class.error["SVC","Error"]=svc.tune$best.performance
 
 
 ####Question 2.b####
 
+#Tuning support vector machine with polynomial kernel of degree 2
 set.seed(rdseed)
 svm2.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "polynomial", degree=2, 
               ranges = list(cost=costs),scale=TRUE)
 
+#Best model cost = 5
 bestmod2 = svm2.tune$best.model
 summary(bestmod2)
+print(bestmod2$cost)
 
-best_cost2=bestmod2$cost
-
-#kf.resid=kf.tst[,fitPred(diabetes[-idx,],diabetes[idx,],idx,best_cost2),by=.(i)]
-
-# svm.errors2=sapply(1:nobs, function(i){
-#   
-#   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "polynomial", degree=2,
-#           cost=best_cost2, scale = FALSE)
-#   
-#   ti.pred= predict(ti, diabetes[i,])
-#   
-#   (ti.pred!=diabetes$Outcome[i])
-# })
-
-
+#Estimated Error Rate
 class.error["SVMP","Error"]=svm2.tune$best.performance
 
 
 ####Question 2.c####
 
+#Tuning support vector machine with radial kernel
 set.seed(rdseed)
 svmr.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "radial", 
                ranges = list(cost=costs, gamma=gamma_val),scale=TRUE)
 
+#Best model cost = 6, gamma = 1
 bestmodr = svmr.tune$best.model
 summary(bestmodr)
-
-best_costr=bestmodr$cost
-best_gam=bestmodr$gamma
-
-# svm.errorsr=sapply(1:nobs, function(i){
-#   
-#   ti =svm(Outcome ~ ., data = diabetes[-i,], kernel = "radial",
-#           cost=best_costr, gamma=best_gam, scale = FALSE)
-#   
-#   ti.pred= predict(ti, diabetes[i,])
-#   
-#   (ti.pred!=diabetes$Outcome[i])
-# })
+print(bestmodr$cost)
+print(bestmodr$gamma)
 
 
+#Estimated Error Rate
 class.error["SVMR","Error"]=svmr.tune$best.performance
+
+
+####Question 2.d####
+
+print(class.error)
