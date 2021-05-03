@@ -1,11 +1,10 @@
 #Packages
 library(ggplot2) #Used for graphics and visual representations
-
 library(tree) #Used for decision trees
 library(randomForest) #Used for bagging and random forest
 library(gbm) #Used for boosting
 library(e1071) #Used for hyperparameter tuning
-library(data.table)
+library(ISLR)
 
 rdseed=8466 #Seed to replicate results
 
@@ -60,7 +59,7 @@ hit.errors=sapply(1:n, function(i){
 #Estimated MSE
 error.df["DT","MSE"]=mean(hit.errors)
 
-print(mean(hit.errors))
+print(error.df["DT","MSE"])
 
 ####Question 1.b####
 
@@ -77,7 +76,7 @@ ggplot(data.frame(Tree_Size = cv.hitree$size, MSE= cv.hitree$dev/n ),aes(x=Tree_
 
 
 #Since the unpruned tree is the best we have the same test MSE as before.
-print(mean(hit.errors))
+print(error.df["DT","MSE"])
 
 
 ####Question 1.c####
@@ -105,7 +104,7 @@ bag.errors=sapply(1:n, function(i){
 
 error.df["Bagging","MSE"]=mean(bag.errors)
 
-print(mean(bag.errors))
+print(error.df["Bagging","MSE"])
 
 ####Question 1.d####
 
@@ -135,7 +134,7 @@ rf.errors=sapply(1:n, function(i){
 
 error.df["RF","MSE"]=mean(rf.errors)
 
-print(rf.errors)
+print(error.df["RF","MSE"])
 
 ####Question 1.e####
 
@@ -145,11 +144,13 @@ d=1
 #Shrinkage value
 lambda=0.01
 
-
+#Fitting a boosting model
 set.seed(rdseed)
 boost.hit <- gbm(logSal ~ ., data = new_hit, distribution = "gaussian", 
                     n.trees = B, interaction.depth = d,shrinkage = lambda)
-summary(boost.hit)
+
+#Predictors' Influence
+print(summary(boost.hit))
 
 #Visualizing the effect of some predictors
 par(mfrow = c(1, 2))
@@ -169,7 +170,7 @@ boost.errors=sapply(1:n, function(i){
 
 
 error.df["Boosting","MSE"]=mean(boost.errors)
-print(mean(boost.errors))
+print(error.df["Boosting","MSE"])
 
 ####Question 1.e####
 
@@ -210,6 +211,7 @@ set.seed(rdseed)
 svc.tune=tune(svm, Outcome ~ ., data = diabetes, kernel = "linear", 
               ranges = list(cost=costs),scale=TRUE)
 
+
 #Best model cost = 1
 bestmod = svc.tune$best.model
 summary(bestmod)
@@ -218,7 +220,7 @@ print(bestmod$cost)
 
 #Estimated Error Rate
 class.error["SVC","Error"]=svc.tune$best.performance
-
+print(class.error["SVC","Error"])
 
 ####Question 2.b####
 
@@ -234,7 +236,7 @@ print(bestmod2$cost)
 
 #Estimated Error Rate
 class.error["SVMP","Error"]=svm2.tune$best.performance
-
+print(class.error["SVMP","Error"])
 
 ####Question 2.c####
 
@@ -252,7 +254,7 @@ print(bestmodr$gamma)
 
 #Estimated Error Rate
 class.error["SVMR","Error"]=svmr.tune$best.performance
-
+print(class.error["SVMR","Error"])
 
 ####Question 2.d####
 
