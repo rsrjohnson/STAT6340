@@ -64,10 +64,14 @@ print(error.df["DT","MSE"])
 ####Question 1.b####
 
 #Using LOOCV(K=n) to find performance of the pruned trees
+set.seed(rdseed)
 cv.hitree = cv.tree(hitree, K=n)
 
 #Best Size = 9, pruning does not help
 best_size=which.min(cv.hitree$size)
+
+#Second best (pruned size = 8) tree MSE:
+print(cv.hitree$dev[2]/n)
 
 #Plotting Test MSE vs Size
 ggplot(data.frame(Tree_Size = cv.hitree$size, MSE= cv.hitree$dev/n ),aes(x=Tree_Size, y=MSE))+
@@ -237,6 +241,7 @@ print(bestmod2$cost)
 #Estimated Error Rate
 class.error["SVMP","Error"]=svm2.tune$best.performance
 print(class.error["SVMP","Error"])
+
 
 ####Question 2.c####
 
