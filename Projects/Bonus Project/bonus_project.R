@@ -1,20 +1,29 @@
+#Seed to replicate results
 rdseed=8466
 set.seed(rdseed)
 
+library(ggplot2)
 library(keras)
 library(tensorflow)
 
-set_random_seed(rdseed)
+#Setting the seed for tensorflow session
+tf$random$set_seed(rdseed)
 
 
 
 #Experiment 1
 print("Experiment 1")
 
+#Number of Epochs for 1a-1d, 1e-1h
+epc=c(5,10,5,10)
+
 layer_sizes=list(NN1=512,NN2=512,NN3=256,NN4=256,NN5=c(512,512),NN6=c(512,512),
                  NN7=c(256,256),NN8=c(256,256),NN9=512,NN10=512)
 
-error.df=data.frame(Train_Error=rep(0,10),Test_Error=rep(0,10),HiddenLayers=matrix(layer_sizes),
+
+error.df=data.frame(Train_Error=rep(0,10),Test_Error=rep(0,10),
+                    HiddenLayers=matrix(layer_sizes),
+                    Epochs=c(epc,epc,5,5),
                     Regularization=c(rep("NO",8),"L2","NO"),
                     DropOut=c(rep("NO",9),"50%"))
 
@@ -35,10 +44,13 @@ train_labels = to_categorical(train_labels)
 test_labels = to_categorical(test_labels)
 
 
-hl_sizes=c(512,512,256,256)
-epc=c(5,10,5,10)
+
 
 ####Questions 1a-1d####
+
+#Hidden Layers sizes for 1a-1d
+hl_sizes=c(512,512,256,256)
+
 for(i in seq(1,4))
 {
   nn <- keras_model_sequential() %>%
@@ -66,6 +78,8 @@ for(i in seq(1,4))
 
 
 ####Questions 1e-1h####
+
+#Hidden Layers sizes for 1e-1h
 hl1=c(512,512,256,256)
 hl2=c(512,512,256,256)
 
@@ -113,7 +127,7 @@ nn.reg %>% compile(
   metrics = c("accuracy")
 )
 
-nn.reg %>% fit(train_images, train_labels, epochs = 10, batch_size = 128)
+nn.reg %>% fit(train_images, train_labels, epochs = 5, batch_size = 128)
 
 metrics_trn=nn.reg %>% evaluate(train_images, train_labels)
 
@@ -157,7 +171,9 @@ c(c(train_data, train_targets), c(test_data, test_targets)) %<-% boston
 
 layer_sizes2=list(NN1=c(64,64),NN2=128,NN3=c(64,64),NN4=128)
 
-error.df2=data.frame(Val_MAE=rep(0,4),Test_MAE=rep(0,4),HiddenLayers=matrix(layer_sizes2),Regularization=c("NO","NO","L2","L2"))
+error.df2=data.frame(Val_MAE=rep(0,4),Test_MAE=rep(0,4),
+                     HiddenLayers=matrix(layer_sizes2),
+                     Regularization=c("NO","NO","L2","L2"))
 
 ### Preprocess the data
 
@@ -229,10 +245,12 @@ average_mae_history <- data.frame(
   validation_mae = apply(all_mae_histories, 2, mean)
 )
 
-### Plot the history
+best_epoch=which.min(average_mae_history$validation_mae)
 
-plot(validation_mae ~ epoch, average_mae_history, ylim = c(2, 5), 
-     type ="l")
+### Plot the history
+print(ggplot(average_mae_history,aes(x=epoch,y=validation_mae))+geom_line()+
+  ylim(2,5)+geom_point(aes(x=best_epoch,y=validation_mae[best_epoch]),
+                       color="red",size=3,shape=20))
 
 final_e=75
 
