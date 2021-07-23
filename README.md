@@ -55,4 +55,4 @@ Experiment 2 - Comparison of SVC and SVM with radial and polynomial kernel.
 
 Experiment 1 - Comparison of different number of layers and sizes, including L2 regularization and dropout for the MNIST data set.
 
-Experiment 2 - Comparison of different number of layers and sizes, including L2 regularization and dropout for the Boston Housing Pric data set.
+Experiment 2 - Comparison of different number of layers and sizes, including L2 regularization and dropout for the Boston Housing Price data set.
