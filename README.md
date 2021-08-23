@@ -44,7 +44,7 @@ Experiment 2 - Cluster Analysis via Complete Linkage and Kmeans of Hitters.
 Experiment 3 - Linear Regression, PCR and PLS to predict the log(salary) of Hitters. Comparison via LOOCV estimated error.
 
 
-## [Project 6 - Decision Trees and SVM](https://github.com/rsrjohnson/STAT6340/blob/main/Projects/Mini%20Project%206/mini_project_6.R)
+## [Project 6 - Decision Trees and SVM](https://github.com/rsrjohnson/STAT6340/tree/main/Projects/Mini%20Project%20)
 
 Experiment 1 - Comparison of DT, Bagging, Random Forest and Boosting applied to the Hitters data set.
 
